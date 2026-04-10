@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>NEURAL_CORE — AI Infrastructure</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --secondary: #00f3ff;
+            --accent: #ff00c8;
+            --dark-bg: #0a0a1a;
+            --dark-bg-2: #120d2b;
+            --text-primary: #e6e6ff;
+            --text-secondary: #a3a3cc;
+            --border-radius: 12px;
+            --transition-base: all 0.55s cubic-bezier(0.16,1,0.3,1);
+            --transition-in: all 0.9s cubic-bezier(0.22,0.61,0.36,1);
+            --transition-glitch: transform 0.15s cubic-bezier(0.16,1,0.3,1);
+            --blob-scale: 1;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            .cursor-dot, .cursor-ring {
+                display: none !important;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--dark-bg), var(--dark-bg-2));
+            overflow-x: hidden;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            position: relative;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        @media (max-width: 390px) {
+            html { font-size: 14px; }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            width: 0%;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            z-index: 9999;
+            transition: width 0.2s linear;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 24px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            transition: var(--transition-base);
+        }
+
+        .header.scrolled {
+            backdrop-filter: blur(20px);
+            background: rgba(10, 10, 26, 0.85);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.4rem;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--primary);
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            position: relative;
+            transition: var(--transition-base);
+        }
+
+        nav a:hover {
+            color: var(--primary);
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: var(--transition-base);
+        }
+
+        nav a:hover::after {
+            width: 100%;
+        }
+
+        /* === HERO === */
+        #hero {
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 5%;
+            background: linear-gradient(135deg, #0a0a1a, #120d2b);
+        }
+
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            aria-hidden="true";
+        }
+
+        .hero-title {
+            font-size: 5.2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-title span {
+            display: inline-block;
+            opacity: 0;
+            transform: rotateX(90deg) translateY(42px) scale(1.02);
+            filter: blur(8px);
+            transition: var(--transition-base);
+        }
+
+        .hero-title span:nth-child(1) { animation-delay: 0ms; }
+        .hero-title span:nth-child(2) { animation-delay: 55ms; }
+        .hero-title span:nth-child(3) { animation-delay: 110ms; }
+        .hero-title span:nth-child(4) { animation-delay: 165ms; }
+        .hero-title span:nth-child(5) { animation-delay: 220ms; }
+        .hero-title span:nth-child(6) { animation-delay: 275ms; }
+        .hero-title span:nth-child(7) { animation-delay: 330ms; }
+        .hero-title span:nth-child(8) { animation-delay: 385ms; }
+        .hero-title span:nth-child(9) { animation-delay: 440ms; }
+        .hero-title span:nth-child(10) { animation-delay: 495ms; }
+        .hero-title span:nth-child(11) { animation-delay: 550ms; }
+        .hero-title span:nth-child(12) { animation-delay: 605ms; }
+        .hero-title span:nth-child(13) { animation-delay: 660ms; }
+        .hero-title span:nth-child(14) { animation-delay: 715ms; }
+        .hero-title span:nth-child(15) { animation-delay: 770ms; }
+        .hero-title span:nth-child(16) { animation-delay: 825ms; }
+        .hero-title span:nth-child(17) { animation-delay: 880ms; }
+        .hero-title span:nth-child(18) { animation-delay: 935ms; }
+        .hero-title span:nth-child(19) { animation-delay: 990ms; }
+        .hero-title span:nth-child(20) { animation-delay: 1045ms; }
+        .hero-title span:nth-child(21) { animation-delay: 1100ms; }
+        .hero-title span:nth-child(22) { animation-delay: 1155ms; }
+        .hero-title span:nth-child(23) { animation-delay: 1210ms; }
+        .hero-title span:nth-child(24) { animation-delay: 1265ms; }
+        .hero-title span:nth-child(25) { animation-delay: 1320ms; }
+        .hero-title span:nth-child(26) { animation-delay: 1375ms; }
+        .hero-title span:nth-child(27) { animation-delay: 1430ms; }
+        .hero-title span:nth-child(28) { animation-delay: 1485ms; }
+        .hero-title span:nth-child(29) { animation-delay: 1540ms; }
+        .hero-title span:nth-child(30) { animation-delay: 1595ms; }
+        .hero-title span:nth-child(31) { animation-delay: 1650ms; }
+        .hero-title span:nth-child(32) { animation-delay: 1705ms; }
+        .hero-title span:nth-child(33) { animation-delay: 1760ms; }
+
+        @keyframes title-fly-in {
+            0% {
+                opacity: 0;
+                transform: rotateX(90deg) translateY(42px) scale(1.02);
+                filter: blur(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: rotateX(0) translateY(0) scale(1);
+                filter: blur(0);
+            }
+        }
+
+        .hero-title span {
+            animation: title-fly-in 1.8s forwards;
+        }
+
+        .glitch {
+            color: var(--primary);
+            position: relative;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before {
+            left: 2px;
+            text-shadow: -2px 0 #ff00c8;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            left: -2px;
+            text-shadow: -2px 0 #00f3ff;
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% { clip: rect(42px, 9999px, 44px, 0); }
+            20% { clip: rect(12px, 9999px, 72px, 0); }
+            40% { clip: rect(22px, 9999px, 32px, 0); }
+            60% { clip: rect(62px, 9999px, 82px, 0); }
+            80% { clip: rect(12px, 9999px, 22px, 0); }
+            100% { clip: rect(32px, 9999px, 42px, 0); }
+        }
+
+        @keyframes glitch-anim2 {
+            0% { clip: rect(22px, 9999px, 32px, 0); }
+            20% { clip: rect(12px, 9999px, 22px, 0); }
+            40% { clip: rect(42px, 9999px, 52px, 0); }
+            60% { clip: rect(22px, 9999px, 32px, 0); }
+            80% { clip: rect(62px, 9999px, 72px, 0); }
+            100% { clip: rect(32px, 9999px, 42px, 0); }
+        }
+
+        .hero-subtitle {
+            font-size: 1.4rem;
+            font-weight: 400;
+            max-width: 720px;
+            margin: 0 auto 48px;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.8s cubic-bezier(0.19,1,0.22,1), transform 0.8s cubic-bezier(0.19,1,0.22,1), letter-spacing 0.8s cubic-bezier(0.19,1,0.22,1);
+        }
+
+        .hero-subtitle.loaded {
+            opacity: 1;
+            transform: translateY(0);
+            letter-spacing: 0;
+        }
+
+        .btn-magnetic {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 36px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+            transition: var(--transition-base);
+            will-change: transform;
+            transform: translateZ(0);
+            border: none;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 0 2px rgba(139,92,246,0.2), 0 0 24px rgba(139,92,246,0.25);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 2px rgba(139,92,246,0.2);
+        }
+
+        .btn-magnetic:hover {
+            transform: translate(0, 0);
+        }
+
+        .btn-magnetic::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .btn-magnetic:hover::before {
+            opacity: 1;
+        }
+
+        .btn-magnetic:hover::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: -1;
+        }
+
+        .btn-magnetic:hover::after {
+            opacity: 1;
+        }
+
+        .btn-magnetic:focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .btn-magnetic:active {
+            transform: scale(0.95);
+            transition: transform 0.15s cubic-bezier(0.16,1,0.3,1);
+        }
+
+        .btn-magnetic[data-cursor="pointer"] {
+            cursor: none;
+        }
+
+        .floating-particles {
+            position: absolute;
+            top: 32px;
+            right: 32px;
+            z-index: 2;
+        }
+
+        .floating-particles circle {
+            animation-name: float-orbit;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            animation-duration: calc(8s + var(--delay));
+        }
+
+        @keyframes float-orbit {
+            0% { transform: translate(0,0); }
+            50% { transform: translate(18px,-12px) rotate(12deg); }
+            100% { transform: translate(0,0); }
+        }
+
+        /* === FEATURES GRID === */
+        .features-grid {
+            padding: 120px 5% 100px;
+            max-width: 1440px;
+            margin: 0 auto;
+            perspective: 720px;
+        }
+
+        .features-grid h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 72px;
+        }
+
+        .features-grid .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(320px, 1fr)));
+            gap: 28px;
+        }
+
+        @media (max-width: 1024px) {
+            .features-grid .grid {
+                grid-template-columns: repeat(2, minmax(320px, 1fr)));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .features-grid .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            position: relative;
+            background: rgba(25, 25, 50, 0.55);
+            border-radius: var(--border-radius);
+            padding: 40px 32px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(139,92,246,0.12);
+            overflow: hidden;
+            transform-style: preserve-3d;
+            transition: var(--transition-base);
+            height: 420px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: rotateX(calc(var(--y)*-18deg)) rotateY(calc(var(--x)*18deg)) translateZ(24px);
+        }
+
+        .card-icon {
+            width: 72px;
+            height: 72px;
+            margin-bottom: 32px;
+            position: relative;
+        }
+
+        .card-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .card-icon path {
+            stroke: var(--primary);
+            stroke-width: 1.2;
+            fill: none;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: icon-draw 1.4s ease-out forwards;
+        }
+
+        @keyframes icon-draw {
+            to { stroke-dashoffset: 0; }
+        }
+
+        .card-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .card-content p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            flex-grow: 1;
+        }
+
+        .card-cta {
+            align-self: flex-start;
+        }
+
+        /* === TECH STACK === */
+        .tech-stack {
+            padding: 100px 5% 80px;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        .tech-stack h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 56px;
+        }
+
+        .tag-cluster {
+            position: relative;
+            height: 320px;
+            overflow: hidden;
+        }
+
+        .mag-tag {
+            position: absolute;
+            font-size: 0.92rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            padding: 8px 16px;
+            border-radius: 32px;
+            background: rgba(139,92,246,0.12);
+            color: var(--text-primary);
+            cursor: default;
+            transition: transform 0.18s cubic-bezier(0.16,1,0.3,1), color 0.3s ease, text-shadow 0.3s ease;
+            z-index: calc(100 + var(--base-z, 0));
+        }
+
+        .mag-tag:hover {
+            color: var(--primary);
+            text-shadow: 0 0 12px rgba(139,92,246,0.4);
+        }
+
+        @keyframes tagFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* === DEMO SECTION === */
+        .demo-section {
+            padding: 120px 5% 100px;
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            gap: 64px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .demo-section {
+                flex-direction: column;
+            }
+        }
+
+        .demo-input-area {
+            flex: 1;
+            min-width: 320px;
+        }
+
+        .demo-output-area {
+            flex: 1;
+            min-width: 320px;
+        }
+
+        .prompt-input {
+            width: 100%;
+            height: 220px;
+            padding: 24px;
+            font-size: 1.1rem;
+            font-family: 'IBM Plex Mono', monospace;
+            background: rgba(25, 25, 50, 0.65);
+            border: 2px solid rgba(139,92,246,0.2);
+            border-radius: var(--border-radius);
+            color: var(--text-primary);
+            resize: none;
+            transition: var(--transition-base);
+        }
+
+        .prompt-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139,92,246,0.4);
+        }
+
+        .prompt-input::placeholder {
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .run-btn {
+            margin-top: 24px;
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .demo-output {
+            background: rgba(25, 25, 50, 0.65);
+            border-radius: var(--border-radius);
+            padding: 32px;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .pulse-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            animation: pulse-move 2.4s infinite;
+            z-index: 1;
+        }
+
+        @keyframes pulse-move {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* === STATS === */
+        .stats-section {
+            padding: 120px 5% 100px;
+            max-width: 1440px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .stats-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 30%, rgba(139,92,246,0.08), transparent 70%);
+            z-index: -1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(240px, 1fr)));
+            gap: 32px;
+        }
+
+        @media (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(240px, 1fr)));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 3.2rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .stat-number span {
+            display: inline-block;
+            transform-origin: bottom;
+            transition: transform 0.6s cubic-bezier(0.22,0.61,0.36,1);
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stats-bg-blob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 600px;
+            height: 600px;
+            background: var(--primary);
+            clip-path: path('M0,50 Q25,20 50,50 T100,50 L100,100 L0,100 Z');
+            filter: blur(65px);
+            opacity: 0.18;
+            transform: translate(-50%, -50%) scale(var(--blob-scale));
+            animation: blob-float 14s infinite ease-in-out;
+            z-index: -1;
+        }
+
+        @keyframes blob-float {
+            0% { transform: translate(-50%, -50%) scale(var(--blob-scale)) rotate(0deg); }
+            50% { transform: translate(-50%, -50%) scale(calc(var(--blob-scale) * 1.03)) rotate(8deg) translate(12px,-8px); }
+            100% { transform: translate(-50%, -50%) scale(var(--blob-scale)) rotate(0deg); }
+        }
+
+        /* === TESTIMONIALS === */
+        .testimonials {
+            padding: 120px 5% 100px;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        .testimonials h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 72px;
+        }
+
+        .testimonial-carousel {
+            perspective: 800px;
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+        }
+
+        @media (max-width: 1024px) {
+            .testimonial-carousel {
+                perspective: 600px;
+                gap: 24px;
+            }
+        }
+
+        .testimonial-card {
+            width: 340px;
+            height: 480px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: var(--transition-base);
+        }
+
+        .testimonial-card:hover {
+            transform: rotateY(180deg);
+        }
+
+        .testimonial-front,
+        .testimonial-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: var(--border-radius);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: rgba(25, 25, 50, 0.65);
+            border: 1px solid rgba(139,92,246,0.12);
+        }
+
+        .testimonial-front {
+            transform: rotateY(0deg);
+        }
+
+        .testimonial-back {
+            transform: rotateY(180deg);
+        }
+
+        .testimonial-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 2rem;
+        }
+
+        .testimonial-quote {
+            font-size: 1.8rem;
+            margin-bottom: 24px;
+            line-height: 1.3;
+        }
+
+        .testimonial-author {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .testimonial-role {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        .star-rating {
+            display: flex;
+            gap: 4px;
+            margin: 24px 0;
+        }
+
+        .star-rating svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--primary);
+        }
+
+        .dot-nav {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 48px;
+        }
+
+        .dot-nav button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(139,92,246,0.2);
+            border: none;
+            cursor: pointer;
+            transition: var(--transition-base);
+        }
+
+        .dot-nav button.active {
+            transform: scale(1.3);
+            background: var(--primary);
+            box-shadow: 0 0 0 4px rgba(139,92,246,0.4);
+        }
+
+        /* === FOOTER === */
+        footer {
+            padding: 64px 5% 48px;
+            background: var(--dark-bg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wave-divider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            z-index: 1;
+        }
+
+        @keyframes wave-sway {
+            0% { transform: translateX(0) translateY(0) rotate(0deg); }
+            25% { transform: translateX(-10px) translateY(4px) rotate(1deg); }
+            50% { transform: translateX(-20px) translateY(0) rotate(0deg); }
+            75% { transform: translateX(-10px) translateY(-4px) rotate(-1deg); }
+            100% { transform: translateX(0) translateY(0) rotate(0deg); }
+        }
+
+        .footer-content {
+            max-width: 1440px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(240px, 1fr)));
+            gap: 48px;
+            margin-bottom: 48px;
+        }
+
+        @media (max-width: 768px) {
+            .footer-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .footer-col h3 {
+            font-size: 1.3rem;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: var(--transition-base);
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .social-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(139,92,246,0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: var(--transition-base);
+        }
+
+        .social-icon:hover {
+            transform: translateY(-6px) scale(1.1);
+            filter: drop-shadow(0 6px 12px rgba(139,92,246,0.3));
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 48px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .footer-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: fall 4.2s infinite ease-in;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-20px) rotate(0deg);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* === CURSOR === */
+        .cursor-dot {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease;
+        }
+
+        .cursor-ring {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            opacity: 0.6;
+            mix-blend-mode: screen;
+            transition: all 0.2s ease;
+        }
+
+        .cursor-ring.expanded {
+            transform: translate(-50%, -50%) scale(1.5);
+            opacity: 0.9;
+        }
+
+        .cursor-dot.text {
+            content: '|';
+            font-family: monospace;
+            font-size: 16px;
+            line-height: 1;
+            background: none;
+            width: 2px;
+            height: 20px;
+        }
+
+        /* === UTILS === */
+        .section {
+            scroll-margin-top: 80px;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            z-index: 10000;
+            transition: top 0.3s;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 390px) {
+            .hero-title {
+                font-size: 2.8rem;
+            }
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+            .btn-magnetic {
+                padding: 14px 28px;
+                font-size: 0.95rem;
+            }
+            .tag-cluster {
+                height: 260px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .testimonial-carousel {
+                perspective: 600px;
+            }
+            @supports (-webkit-text-stroke: 1px) {
+                .hero-title span {
+                    -webkit-text-stroke: 0.5px var(--primary);
+                }
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+            .card {
+                height: auto;
+            }
+        }
+
+        /* === ANIMATION TRIGGERS === */
+        .animate-in {
+            opacity: 0;
+            transform: translateY(48px) scale(0.96);
+            transition: var(--transition-in);
+        }
+
+        .animate-in.loaded {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .glitch-char {
+            display: inline-block;
+            opacity: 0;
+            transform: scale(0.92);
+            filter: blur(2px);
+            transition: opacity 0.4s cubic-bezier(0.22,0.61,0.36,1), transform 0.4s cubic-bezier(0.22,0.61,0.36,1), filter 0.4s cubic-bezier(0.22,0.61,0.36,1);
+        }
+
+        .glitch-char.decoded {
+            opacity: 1 !important;
+            transform: scale(1) !important;
+            filter: blur(0) !important;
+        }
+
+        /* === ARIA HINTS === */
+        [aria-hidden="true"] {
+            cursor: none;
+        }
+    </style>
+</head>
+<body aria-hidden="true">
+    <div class="progress-bar"></div>
+    <div class="header" aria-label="Main navigation with scroll-triggered backdrop effect">
+        <a href="#" class="logo">NEURAL<span>_CORE</span></a>
+        <nav>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#tech">Tech Stack</a></li>
+                <li><a href="#demo">Demo</a></li>
+                <li><a href="#stats">Stats</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Skip Link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Hero Section -->
+    <section id="hero" class="section" aria-labelledby="hero-heading">
+        <canvas id="particle-canvas" aria-hidden="true" role="presentation"></canvas>
+        <h1 id="hero-heading" class="hero-title">
+            <span>N</span><span>E</span><span>U</span><span>R</span><span>A</span><span>L</span><span>_</span><span>C</span><span>O</span><span>R</span><span>E</span>
+        </h1>
+        <p class="hero-subtitle">AI infrastructure that thinks like you — not like a server.</p>
+        <div class="cta-group">
+            <button class="btn-magnetic btn-primary" aria-label="Launch Console — magnetic hover effect enabled" data-cursor="pointer">Launch Console</button>
+            <button class="btn-magnetic btn-outline" aria-label="View API Docs — magnetic hover effect enabled" data-cursor="pointer">View API Docs</button>
+        </div>
+        <svg class="floating-particles" viewBox="0 0 100 100" width="100" height="100">
+            <g style="--delay:0.2s">
+                <circle cx="10" cy="10" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+                <circle cx="20" cy="15" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+                <circle cx="30" cy="8" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+                <circle cx="40" cy="12" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+                <circle cx="50" cy="10" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+                <circle cx="60" cy="14" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+                <circle cx="70" cy="9" r="1.2" fill="#8b5cf6" opacity="0.6"/>
+            </g>
+        </svg>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="features-grid section">
+        <h2>Powerful Infrastructure</h2>
+        <div class="grid">
+            <div class="card" style="--x:0;--y:0;">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3>Neural Scaling</h3>
+                    <p>Auto-scale inference across GPU clusters with zero config. Deploy models in seconds, not weeks.</p>
+                    <button class="btn-magnetic card-cta" data-cursor="pointer">Learn More</button>
+                </div>
+            </div>
+            <div class="card" style="--x:0;--y:0;">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3>Context Fusion</h3>
+                    <p>Unify multi-modal inputs — text, vision, audio — into single coherent embeddings for reasoning.</p>
+                    <button class="btn-magnetic card-cta" data-cursor="pointer">Learn More</button>
+                </div>
+            </div>
+            <div class="card" style="--x:0;--y:0;">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <div class="card-content">
+                    <h3>Self-Healing Agents</h3>
+                    <p>Agents that debug their own errors, rewrite prompts, and chain tools autonomously.</p>
+                    <button class="btn-magnetic card-cta" data-cursor="pointer">Learn More</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section id="tech" class="tech-stack section">
+        <h2>Engineered for Intelligence</h2>
+        <div class="tag-cluster" id="tag-cluster">
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: TensorFlow">TensorFlow</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: PyTorch">PyTorch</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: CUDA">CUDA</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Rust">Rust</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: WebAssembly">WebAssembly</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Kafka">Kafka</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Redis">Redis</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Postgres">Postgres</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Kubernetes">Kubernetes</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Prometheus">Prometheus</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: Grafana">Grafana</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: LangChain">LangChain</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: LlamaIndex">LlamaIndex</span>
+            <span class="mag-tag" data-x="0" data-y="0" role="group" aria-label="Technology skill tag: HuggingFace">HuggingFace</span>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section id="demo" class="demo-section section">
+        <div class="demo-input-area">
+            <h2>Try It Live</h2>
+            <p>Describe your ideal AI agent in natural language</p>
+            <textarea class="prompt-input" placeholder="Describe your ideal AI agent..." aria-labelledby="demo-label" aria-describedby="prompt-hint"></textarea>
+            <button class="btn-magnetic run-btn" aria-label="Run Simulation — triggers particle explosion and output decoding">▶ Run Simulation</button>
+        </div>
+        <div class="demo-output-area">
+            <h2>Output Preview</h2>
+            <div class="demo-output" aria-live="polite" aria-atomic="true">
+                <span class="glitch-char" data-index="0">N</span><span class="glitch-char" data-index="1">£</span><span class="glitch-char" data-index="2">u</span><span class="glitch-char" data-index="3">®</span><span class="glitch-char" data-index="4">4</span><span class="glitch-char" data-index="5">l</span><span class="glitch-char" data-index="6">_</span><span class="glitch-char" data-index="7">C</span><span class="glitch-char" data-index="8">ø</span><span class="glitch-char" data-index="9">®</span><span class="glitch-char" data-index="10">3</span><span class="glitch-char" data-index="11"> </span><span class="glitch-char" data-index="12">v</span><span class="glitch-char" data-index="13">3</span><span class="glitch-char" data-index="14">.</span><span class="glitch-char" data-index="15">9</span><span class="glitch-char" data-index="16">.</span><span class="glitch-char" data-index="17">7</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section id="stats" class="stats-section section">
+        <h2>Proven Performance</h2>
+        <div class="stats-bg-blob"></div>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number" data-target="98.7"><span>0</span><span>.</span><span>0</span></div>
+                <div class="stat-label">Accuracy Rate</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-target="240"><span>0</span></div>
+                <div class="stat-label">Models Served</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-target="12.4"><span>0</span><span>.</span><span>0</span></div>
+                <div class="stat-label">Avg. Latency (ms)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" data-target="99.99"><span>0</span><span>.</span><span>0</span><span>0</span></div>
+                <div class="stat-label">Uptime SLA</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials section">
+        <h2>Trusted by Builders</h2>
+        <div class="testimonial-carousel">
+            <div class="testimonial-card">
+                <div class="testimonial-front">
+                    <div class="testimonial-avatar">AJ</div>
+                    <div class="testimonial-quote">“Cut our fine-tuning time from days to hours.”</div>
+                    <div class="testimonial-author">Alex Johnson</div>
+                    <div class="testimonial-role">ML Engineer, NeuroLabs</div>
+                </div>
+                <div class="testimonial-back">
+                    <div class="star-rating">
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                    </div>
+                    <p>Deployed 12 custom LLM agents in production using NeuralCore’s unified runtime. The context fusion layer eliminated 70% of our prompt engineering overhead.</p>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <div class="testimonial-front">
+                    <div class="testimonial-avatar">SK</div>
+                    <div class="testimonial-quote">“Finally, an infrastructure that adapts to the model—not vice versa.”</div>
+                    <div class="testimonial-author">Sam Kim</div>
+                    <div class="testimonial-role">CTO, SynthMind</div>
+                </div>
+                <div class="testimonial-back">
+                    <div class="star-rating">
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7.18 14.2l-5-4.87 6.91-1.01L12 2z"/></svg>
+                    </div>
+                    <p>NeuralCore’s dynamic memory allocator reduced VRAM fragmentation by 92%. We now serve 4× more concurrent users on the same hardware.</p>
+                </div>
+            </div>
+        </div>
+        <div class="dot-nav">
+            <button class="active" aria-label="Go to first testimonial"></button>
+            <button aria-label="Go to second testimonial"></button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <svg class="wave-divider" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M0,0 Q150,20 300,0 T600,0 L600,40 L0,40 Z" fill="#0a0a1a"></path>
+        </svg>
+        <div class="footer-content">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>NEURAL_CORE</h3>
+                    <p>AI infrastructure that thinks like you — not like a server.</p>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon" aria-label="Twitter"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.564-2.005.974-3.127 1.195a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.061c0 2.385 1.708 4.374 3.949 4.827a4.996 4.996 0 01-2.212.085c.64.181 1.48.27 2.4.248a9.837 9.837 0 005.152 0c-.837-.249-1.57-.615-2.188-.996.973.297 2.053.457 3.217.457 3.873 0 7.287-2.47 7.287-7.287v-.217c.564-.402.996-.975 1.28-1.617z"/></svg></a>
+                        <a href="#" class="social-icon" aria-label="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.22.793.139.992.068.199.071.398.139.599.068.499-.22 1.097-.787 1.298-.869.198-.071.398-.138.599-.068.2.071.399.139.599.068.499-.22.999-.787 1.298-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.2.071.399.139.599.068.499-.22.999-.787 1.299-.87.198-.071.398-.139.599-.069.199.071.398

@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroFlux — AI Infrastructure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--color-bg-hero:#0a0a1a;
+--color-bg-hero2:#0d0d24;
+--color-bg-features:#0f0f23;
+--color-bg-stats:#120f2e;
+--color-accent:#6699ff;
+--color-accent2:#7b5cff;
+--color-accent3:#4a3aff;
+--color-text:#e6e6ff;
+--color-text-muted:#9999cc;
+}
+html{scroll-behavior:smooth}
+body{
+font-family:'Inter',sans-serif;
+background:var(--color-bg-hero);
+color:var(--color-text);
+overflow-x:hidden;
+font-kerning:normal;
+}
+a{color:var(--color-accent);text-decoration:none}
+a:focus-visible{outline:2px solid #7b5cff;outline-offset:2px}
+
+.skip-link{
+position:absolute;left:-9999px;top:16px;
+background:#4a3aff;color:#fff;
+padding:8px 16px;border-radius:6px;
+z-index:9999;font-size:0.9rem;
+}
+.skip-link:focus{left:16px}
+
+/* ===== AMBIENT GLOW ===== */
+#ambient-glow{
+position:fixed;
+width:500px;height:500px;
+border-radius:50%;
+background:radial-gradient(circle,rgba(99,102,241,0.18) 0%,transparent 70%);
+transform:translate(-50%,-50%);
+pointer-events:none;
+z-index:0;
+transition:left 0.3s ease,top 0.3s ease;
+}
+
+/* ===== HERO ===== */
+#hero{
+position:relative;
+min-height:100vh;
+display:flex;flex-direction:column;
+align-items:center;justify-content:center;
+background:linear-gradient(135deg,var(--color-bg-hero),var(--color-bg-hero2));
+overflow:hidden;
+padding:2rem;
+}
+#particle-canvas{
+position:absolute;inset:0;
+width:100%;height:100%;
+z-index:-1;
+}
+.hero-content{
+position:relative;z-index:1;
+text-align:center;max-width:900px;
+}
+.hero-title{
+font-size:3.5rem;line-height:1.1;
+font-weight:700;letter-spacing:-0.02em;
+font-feature-settings:"ss01","ss02";
+margin-bottom:1.5rem;
+display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;
+}
+.hero-title .char{
+display:inline-block;
+opacity:0;
+transform:rotateX(90deg) translateY(48px);
+filter:blur(10px);
+transition:none;
+}
+.hero-title .char.visible{
+animation:charReveal 0.95s cubic-bezier(0.22,0.72,0.48,0.99) forwards;
+}
+@keyframes charReveal{
+0%{opacity:0;transform:rotateX(90deg) translateY(48px);filter:blur(10px)}
+100%{opacity:1;transform:rotateX(0deg) translateY(0px);filter:blur(0px)}
+}
+.glitch-text{
+color:var(--color-accent);
+position:relative;
+display:inline-block;
+}
+.glitch-text.glitching::before,
+.glitch-text.glitching::after{
+content:attr(data-text);
+position:absolute;inset:0;
+}
+.glitch-text.glitching::before{
+color:#ff4040;
+animation:glitchB 0.4s steps(1) infinite;
+clip-path:polygon(0 0,100% 0,100% 45%,0 45%);
+transform:translate(-3px,-1px);
+}
+.glitch-text.glitching::after{
+color:#40ffff;
+animation:glitchA 0.4s steps(1) infinite;
+clip-path:polygon(0 55%,100% 55%,100% 100%,0 100%);
+transform:translate(3px,1px);
+}
+@keyframes glitchA{
+0%{transform:translate(3px,1px)}25%{transform:translate(-3px,2px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-2px,3px)}100%{transform:translate(3px,1px)}
+}
+@keyframes glitchB{
+0%{transform:translate(-3px,-1px)}25%{transform:translate(3px,-2px)}50%{transform:translate(-2px,1px)}75%{transform:translate(2px,-3px)}100%{transform:translate(-3px,-1px)}
+}
+.hero-subtitle{
+font-size:1.125rem;line-height:1.6;
+color:var(--color-text-muted);
+max-width:600px;margin:0 auto 2.5rem;
+opacity:0;
+transform:translateY(32px) scale(0.97);
+filter:blur(4px);
+font-feature-settings:"ss01","ss02";
+}
+.hero-subtitle.visible{
+animation:subtitleReveal 0.85s ease-out 1.35s forwards;
+}
+@keyframes subtitleReveal{
+0%{opacity:0;transform:translateY(32px) scale(0.97);filter:blur(4px)}
+100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+.hero-buttons{
+display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap;
+}
+
+/* ===== BUTTONS ===== */
+.cta-btn{
+min-width:240px;height:64px;
+border-radius:12px;border:none;
+background:linear-gradient(135deg,#4a3aff,#7b5cff);
+color:#fff;font-size:1.05rem;font-weight:600;
+cursor:pointer;position:relative;
+box-shadow:0 0 32px rgba(102,153,255,0.35);
+transition:transform 0.5s cubic-bezier(0.16,1,0.3,1),box-shadow 0.3s ease,color 0.2s ease;
+font-family:'Inter',sans-serif;
+outline:none;
+letter-spacing:0.01em;
+overflow:hidden;
+}
+.cta-btn:hover{
+box-shadow:0 0 48px rgba(102,153,255,0.55);
+color:rgba(255,255,255,0.85);
+}
+.cta-btn:active{transform:scale(0.97)!important}
+.cta-btn:focus-visible{outline:2px solid rgba(102,153,255,0.6);outline-offset:2px}
+
+.ghost-btn{
+min-width:160px;height:64px;
+border-radius:12px;
+border:1.5px solid rgba(102,153,255,0.4);
+background:transparent;
+color:var(--color-text);
+font-size:1.05rem;font-weight:500;
+cursor:pointer;position:relative;
+transition:transform 0.3s cubic-bezier(0.16,1,0.3,1),border-color 0.3s,border-width 0.3s,box-shadow 0.3s;
+font-family:'Inter',sans-serif;
+overflow:hidden;
+outline:none;
+}
+.ghost-btn::before{
+content:'';
+position:absolute;inset:0;
+background:radial-gradient(circle at center,rgba(102,153,255,0.2) 0%,transparent 70%);
+opacity:0;
+transition:opacity 0.4s ease;
+border-radius:inherit;
+}
+.ghost-btn:hover{
+border-width:2.5px;
+border-color:rgba(102,153,255,0.85);
+transform:scale(1.03) translateY(-2px);
+}
+.ghost-btn:hover::before{opacity:1}
+.ghost-btn:active{transform:scale(0.98)!important}
+.ghost-btn:focus-visible{outline:2px solid rgba(102,153,255,0.6);outline-offset:2px}
+
+/* ===== FEATURES ===== */
+#features{
+background:var(--color-bg-features);
+padding:6rem 2rem;
+position:relative;overflow:hidden;
+}
+.features-header{
+text-align:center;margin-bottom:4rem;
+}
+.section-title{
+font-size:2.5rem;line-height:1.2;font-weight:700;
+font-feature-settings:"ss01","ss02";
+margin-bottom:1rem;
+}
+.section-subtitle{
+color:var(--color-text-muted);font-size:1.125rem;line-height:1.6;
+max-width:560px;margin:0 auto;
+}
+.features-grid{
+display:grid;
+grid-template-columns:repeat(3,minmax(0,1fr));
+gap:24px;
+max-width:1200px;margin:0 auto;
+position:relative;
+}
+
+/* Feature Card */
+.feature-card{
+perspective:720px;
+height:320px;
+cursor:pointer;
+}
+.card-inner{
+position:relative;width:100%;height:100%;
+transform-style:preserve-3d;
+transition:transform 0.75s cubic-bezier(0.17,0.67,0.83,0.17);
+}
+.feature-card:hover .card-inner{
+transform:rotateY(180deg);
+}
+.card-front,.card-back{
+position:absolute;inset:0;
+backface-visibility:hidden;
+border-radius:16px;
+padding:2rem;
+display:flex;flex-direction:column;
+align-items:flex-start;justify-content:flex-start;
+border:1px solid rgba(102,153,255,0.15);
+}
+.card-front{
+background:rgba(255,255,255,0.03);
+backdrop-filter:blur(10px);
+position:relative;overflow:hidden;
+}
+.card-front::after{
+content:'';
+position:absolute;inset:0;
+background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(102,153,255,0.12) 0%,transparent 60%);
+opacity:0;
+transition:opacity 0.3s;
+pointer-events:none;
+border-radius:inherit;
+}
+.feature-card:hover .card-front::after{opacity:0}
+.card-back{
+background:linear-gradient(135deg,rgba(74,58,255,0.15),rgba(123,92,255,0.1));
+transform:rotateY(180deg);
+opacity:0;
+transition:opacity 0.3s ease 0.15s;
+}
+.feature-card:hover .card-back{opacity:1}
+
+.card-icon{
+width:56px;height:56px;margin-bottom:1.5rem;
+display:flex;align-items:center;justify-content:center;
+background:rgba(102,153,255,0.1);
+border-radius:12px;
+}
+.card-icon svg{
+width:28px;height:28px;
+fill:none;stroke:var(--color-accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
+.feature-card:hover .card-icon svg{
+animation:pulseGlow 2.8s ease-in-out infinite;
+}
+@keyframes pulseGlow{
+0%{filter:drop-shadow(0 0 0 rgba(102,153,255,0.4))}
+50%{filter:drop-shadow(0 0 24px rgba(102,153,255,0.75))}
+100%{filter:drop-shadow(0 0 0 rgba(102,153,255,0.4))}
+}
+.feature-title{
+font-size:1.2rem;font-weight:600;
+margin-bottom:0.75rem;
+font-feature-settings:"ss01","ss02";
+}
+.feature-desc{
+color:var(--color-text-muted);font-size:0.95rem;line-height:1.6;
+margin-bottom:auto;
+}
+.feature-cta{
+margin-top:1.5rem;
+color:var(--color-accent);font-size:0.9rem;font-weight:500;
+display:inline-flex;align-items:center;gap:6px;
+transition:gap 0.2s ease;
+}
+.feature-cta:hover{gap:10px}
+
+.blob-deco{
+position:absolute;
+width:120px;height:120px;
+background:radial-gradient(circle,rgba(123,92,255,0.15) 0%,transparent 70%);
+border-radius:50% 40% 60% 50%;
+animation:floatBlob 14s ease-in-out infinite;
+pointer-events:none;
+z-index:0;
+}
+@keyframes floatBlob{
+0%,100%{transform:translate(0,0) scale(1)}
+25%{transform:translate(-12px,8px) scale(1.03)}
+50%{transform:translate(8px,-14px) scale(0.98)}
+75%{transform:translate(16px,6px) scale(1.02)}
+}
+
+/* ===== STATS ===== */
+#stats{
+background:var(--color-bg-stats);
+padding:5rem 2rem;
+overflow:hidden;
+}
+.stats-inner{
+max-width:1200px;margin:0 auto;
+}
+.stats-header{
+text-align:center;margin-bottom:4rem;
+}
+.stats-grid{
+display:grid;
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:32px;
+margin-bottom:4rem;
+}
+.stat-item{
+text-align:center;
+}
+.stat-number-wrap{
+font-family:'JetBrains Mono',monospace;
+font-size:3rem;font-weight:700;
+color:#fff;
+display:flex;align-items:center;justify-content:center;
+gap:2px;
+margin-bottom:0.5rem;
+transition:text-shadow 0.3s;
+}
+.stat-item:hover .stat-number-wrap{
+text-shadow:0 0 16px rgba(123,92,255,0.6);
+}
+.digit-roller{
+display:inline-flex;
+overflow:hidden;
+height:1.2em;
+align-items:flex-start;
+}
+.digit-slot{
+display:flex;flex-direction:column;
+transition:transform 1.2s ease-out;
+}
+.digit-face{
+height:1.2em;
+display:flex;align-items:center;justify-content:center;
+line-height:1.2;
+}
+.stat-suffix{
+font-size:2rem;
+color:var(--color-accent);
+font-family:'JetBrains Mono',monospace;
+font-weight:700;
+align-self:flex-start;
+padding-top:0.1em;
+}
+.stat-label{
+color:var(--color-text-muted);
+font-size:0.9rem;
+margin-bottom:1rem;
+}
+.stat-bar{
+height:8px;
+background:#1a1a3a;
+border-radius:4px;
+overflow:hidden;
+transition:box-shadow 0.3s;
+}
+.stat-item:hover .stat-bar{
+box-shadow:0 0 24px rgba(123,92,255,0.5);
+}
+.bar-fill{
+height:100%;
+border-radius:4px;
+background:linear-gradient(90deg,#4a3aff,#7b5cff);
+transform:scaleX(0);
+transform-origin:left;
+transition:transform 2.4s cubic-bezier(0.16,1,0.3,1);
+}
+.bar-fill.animated{
+transform:scaleX(var(--target-scale,1));
+}
+
+/* Tech Tags */
+.tech-tags-section{
+text-align:center;
+}
+.tech-tags-label{
+color:var(--color-text-muted);font-size:0.85rem;
+text-transform:uppercase;letter-spacing:0.1em;
+margin-bottom:1.5rem;
+}
+.tech-tags{
+display:flex;flex-wrap:wrap;gap:12px;justify-content:center;
+}
+.mag-tag{
+display:inline-flex;align-items:center;gap:8px;
+padding:8px 20px;
+border-radius:100px;
+background:rgba(102,153,255,0.08);
+border:1px solid rgba(102,153,255,0.2);
+font-size:0.875rem;font-weight:500;
+color:var(--color-text);
+cursor:default;
+transition:transform 0.85s cubic-bezier(0.16,1,0.3,1),background 0.3s,border-color 0.3s;
+}
+.mag-tag:hover{
+background:rgba(102,153,255,0.15);
+border-color:rgba(102,153,255,0.4);
+}
+.mag-tag .tag-dot{
+width:6px;height:6px;border-radius:50%;
+background:var(--color-accent);
+}
+
+/* ===== CTA SECTION ===== */
+#cta{
+padding:6rem 2rem;
+background:linear-gradient(135deg,#0a0a1a,#1a1a3a);
+position:relative;overflow:hidden;
+text-align:center;
+}
+#floating-orb{
+position:absolute;
+width:320px;height:320px;
+border-radius:50%;
+background:radial-gradient(circle,rgba(102,153,255,0.08) 0%,transparent 70%);
+filter:blur(60px);
+z-index:-1;
+animation:orbit 32s linear infinite;
+pointer-events:none;
+}
+@keyframes orbit{
+0%{transform:translate(-10vw,-15vh) rotate(0deg)}
+25%{transform:translate(15vw,10vh) rotate(90deg)}
+50%{transform:translate(5vw,20vh) rotate(180deg)}
+75%{transform:translate(-20vw,-5vh) rotate(270deg)}
+100%{transform:translate(-10vw,-15vh) rotate(360deg)}
+}
+.cta-inner{
+position:relative;z-index:1;
+max-width:800px;margin:0 auto;
+}
+.cta-title{
+font-size:2.5rem;line-height:1.2;font-weight:700;
+margin-bottom:1.5rem;
+font-feature-settings:"ss01","ss02";
+}
+.cta-subtitle{
+color:var(--color-text-muted);font-size:1.125rem;line-height:1.6;
+margin-bottom:3rem;
+}
+.glitch-phrase{
+position:relative;
+display:inline-block;
+color:var(--color-accent);
+animation:glitchPhrase 4.8s infinite;
+}
+.glitch-phrase::before,.glitch-phrase::after{
+content:attr(data-text);
+position:absolute;inset:0;
+pointer-events:none;
+}
+.glitch-phrase::before{
+color:#ff4040;
+clip-path:polygon(0 0,100% 0,100% 45%,0 45%);
+transform:translate(3px,-3px);
+animation:glitchClipA 4.8s infinite;
+opacity:0;
+}
+.glitch-phrase::after{
+color:#40ffff;
+clip-path:polygon(0 55%,100% 55%,100% 100%,0 100%);
+transform:translate(-3px,3px);
+animation:glitchClipB 4.8s infinite;
+opacity:0;
+}
+@keyframes glitchPhrase{
+0%{transform:translate(0);opacity:1}
+18%{transform:translate(0);opacity:1}
+20%{transform:translate(-5px,5px);opacity:0.9}
+22%{transform:translate(-5px,-5px);opacity:0.95}
+38%{transform:translate(-5px,-5px);opacity:0.95}
+40%{transform:translate(5px,5px);opacity:0.85}
+58%{transform:translate(5px,5px);opacity:0.85}
+60%{transform:translate(5px,-5px);opacity:0.9}
+78%{transform:translate(5px,-5px);opacity:0.9}
+80%{transform:translate(0);opacity:1}
+100%{transform:translate(0);opacity:1}
+}
+@keyframes glitchClipA{
+0%,18%{opacity:0}
+20%,22%{opacity:1;transform:translate(-5px,-5px)}
+23%,38%{opacity:0}
+40%,42%{opacity:1;transform:translate(5px,5px)}
+43%,100%{opacity:0}
+}
+@keyframes glitchClipB{
+0%,18%{opacity:0}
+20%,22%{opacity:1;transform:translate(5px,5px)}
+23%,38%{opacity:0}
+40%,42%{opacity:1;transform:translate(-5px,-5px)}
+43%,100%{opacity:0}
+}
+.dual-cta{
+display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap;
+}
+.secondary-cta{
+min-width:200px;height:64px;
+border-radius:12px;
+border:1px solid rgba(102,153,255,0.3);
+background:#1e1e3a;
+color:var(--color-text);
+font-size:1.05rem;font-weight:500;
+cursor:pointer;position:relative;
+overflow:hidden;
+transition:transform 0.3s cubic-bezier(0.16,1,0.3,1),border-color 0.3s,border-width 0.3s,box-shadow 0.3s;
+font-family:'Inter',sans-serif;
+outline:none;
+}
+.secondary-cta::before{
+content:'';
+position:absolute;inset:0;
+background:radial-gradient(circle at center,rgba(102,153,255,0.1) 0%,transparent 70%);
+opacity:0;
+transition:opacity 0.4s ease;
+}
+.secondary-cta:hover{
+border-width:2px;
+border-color:rgba(102,153,255,0.7);
+transform:scale(1.04) translateY(-1px);
+}
+.secondary-cta:hover::before{opacity:1}
+.secondary-cta:active{transform:scale(0.97)!important}
+.secondary-cta:focus-visible{outline:2px solid rgba(102,153,255,0.6);outline-offset:2px}
+
+/* ===== FOOTER ===== */
+footer{
+background:#080812;
+padding:2rem;
+text-align:center;
+color:var(--color-text-muted);
+font-size:0.875rem;
+border-top:1px solid rgba(102,153,255,0.1);
+}
+
+/* ===== PARTICLE BURST ===== */
+.particle-burst{
+position:fixed;
+border-radius:50%;
+pointer-events:none;
+z-index:9999;
+}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1279px){
+.features-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.feature-card{perspective:640px}
+}
+@media(max-width:768px){
+.hero-title{font-size:2.5rem}
+.section-title{font-size:2rem}
+.cta-title{font-size:1.8rem}
+.cta-btn,.ghost-btn{height:56px;font-size:1rem}
+.features-grid{grid-template-columns:1fr}
+.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.feature-card{height:auto}
+.card-inner{transform:none!important;transition:none!important}
+.card-front{position:relative;transform:none!important}
+.card-back{
+position:relative;
+transform:none!important;
+backface-visibility:visible;
+max-height:0;overflow:hidden;
+transition:max-height 0.6s ease;
+opacity:1;
+margin-top:8px;
+}
+.feature-card:hover .card-back,.feature-card:focus-within .card-back{max-height:500px}
+.feature-card:hover .card-inner,.feature-card:focus-within .card-inner{transform:none!important}
+.glitch-phrase{animation-duration:3.6s}
+}
+@media(max-width:390px){
+body{padding:0}
+#hero{padding:1rem}
+.hero-title{font-size:2rem}
+.hero-title .char{font-size:2rem}
+.cta-btn{height:52px;min-width:180px}
+#ambient-glow{width:400px;height:400px}
+.stats-grid{grid-template-columns:1fr}
+.cta-title{font-size:1.4rem}
+}
+
+/* ===== REDUCED MOTION ===== */
+@media(prefers-reduced-motion:reduce){
+*,*::before,*::after{
+animation:none!important;
+transition-duration:0.2s!important;
+}
+.hero-title .char{opacity:1!important;transform:none!important;filter:none!important}
+.hero-subtitle{opacity:1!important;transform:none!important;filter:none!important}
+}
+</style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div id="ambient-glow" aria-hidden="true" tabindex="-1"></div>
+
+<main id="main-content">
+
+<!-- ===== HERO ===== -->
+<section id="hero" aria-label="Hero section">
+<canvas id="particle-canvas" aria-hidden="true" tabindex="-1"></canvas>
+
+<div class="hero-content">
+<h1 class="hero-title" aria-label="NEUROFLUX">
+<span id="neuro-chars"></span><span class="glitch-text" id="glitch-text-el" data-text="FLUX" role="region" aria-live="polite" aria-label="FLUX"></span>
+</h1>
+<p class="hero-subtitle" id="hero-subtitle">AI infrastructure that thinks in vectors, not silos.</p>
+<div class="hero-buttons" role="group" aria-label="Hero action buttons">
+<button class="cta-btn magnetic-btn" aria-label="Launch NeuroFlux Dashboard" data-magnetic="true" id="hero-cta">Launch Dashboard</button>
+<button class="ghost-btn" aria-label="View API Documentation">API Docs</button>
+</div>
+</div>
+</section>
+
+<!-- ===== FEATURES ===== -->
+<section id="features" aria-label="Features section">
+<div class="blob-deco" style="top:10%;left:5%;animation-delay:-3s"></div>
+<div class="blob-deco" style="bottom:10%;right:5%;animation-delay:-7s"></div>
+<div class="blob-deco" style="top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:-11s"></div>
+<div class="features-header">
+<h2 class="section-title">Built for the Future of AI</h2>
+<p class="section-subtitle">Three pillars of next-generation intelligence infrastructure.</p>
+</div>
+<div class="features-grid" aria-label="Feature cards">
+
+<article class="feature-card" role="region" aria-labelledby="feat-title-1" tabindex="0">
+<div class="card-inner">
+<div class="card-front">
+<div class="card-icon">
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+<circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+</svg>
+</div>
+<h3 class="feature-title" id="feat-title-1" data-scramble="XQZK RZWTEJKM" data-text="Vector Reasoning" aria-live="off">Vector Reasoning</h3>
+<p class="feature-desc">Multi-dimensional semantic processing that understands context across 1024 dimensions simultaneously.</p>
+</div>
+<div class="card-back">
+<h3 class="feature-title" style="margin-bottom:1rem">Vector Reasoning</h3>
+<p class="feature-desc">Our proprietary vector engine processes semantic relationships at unprecedented depth, enabling nuanced understanding across complex knowledge graphs.</p>
+<a href="#" class="feature-cta" aria-label="Learn more about Vector Reasoning">Learn more →</a>
+</div>
+</div>
+</article>
+
+<article class="feature-card" role="region" aria-labelledby="feat-title-2" tabindex="0">
+<div class="card-inner">
+<div class="card-front">
+<div class="card-icon">
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+<path d="M6 8h4M6 11h8M6 14h6"/>
+</svg>
+</div>
+<h3 class="feature-title" id="feat-title-2" data-scramble="NPKRTML DRQTZ" data-text="Neural Routing" aria-live="off">Neural Routing</h3>
+<p class="feature-desc">Adaptive request routing powered by real-time load prediction and semantic similarity matching.</p>
+</div>
+<div class="card-back">
+<h3 class="feature-title" style="margin-bottom:1rem">Neural Routing</h3>
+<p class="feature-desc">Dynamic traffic management that learns from patterns to deliver sub-10ms routing decisions across distributed AI workloads with zero cold-start penalties.</p>
+<a href="#" class="feature-cta" aria-label="Learn more about Neural Routing">Learn more →</a>
+</div>
+</div>
+</article>
+
+<article class="feature-card" role="region" aria-labelledby="feat-title-3" tabindex="0">
+<div class="card-inner">
+<div class="card-front">
+<div class="card-icon">
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+</svg>
+</div>
+<h3 class="feature-title" id="feat-title-3" data-scramble="XQKL PMWZTR" data-text="Edge Inference" aria-live="off">Edge Inference</h3>
+<p class="feature-desc">Deploy quantized models at the edge with <4ms latency and 98.7% accuracy retention at scale.</p>
+</div>
+<div class="card-back">
+<h3 class="feature-title" style="margin-bottom:1rem">Edge Inference</h3>
+<p class="feature-desc">Bring intelligence closer to users with our edge deployment platform. Automatic model compression and hardware-aware optimization for any device profile.</p>
+<a href="#" class="feature-cta" aria-label="Learn more about Edge Inference">Learn more →</a>
+</div>
+</div>
+</article>
+
+</div>
+</section>
+
+<!-- ===== STATS ===== -->
+<section id="stats" aria-label="Statistics section">
+<div class="stats-inner">
+<div class="stats-header">
+<h2 class="section-title">By the Numbers</h2>
+<p class="section-subtitle">Real metrics from production deployments worldwide.</p>
+</div>
+
+<div class="stats-grid">
+<div class="stat-item">
+<div class="stat-number-wrap" role="status" aria-live="polite" aria-label="240 billion parameters processed" aria-valuemin="0" aria-valuemax="240" aria-valuenow="0" id="stat-1" data-target="240" data-suffix="B+">
+<div class="digit-roller" id="roller-1"></div>
+<span class="stat-suffix">B+</span>
+</div>
+<p class="stat-label">Parameters Processed</p>
+<div class="stat-bar"><div class="bar-fill" style="--target-scale:0.88"></div></div>
+</div>
+
+<div class="stat-item">
+<div class="stat-number-wrap" role="status" aria-live="polite" aria-label="4.2 millisecond latency" aria-valuemin="0" aria-valuemax="42" aria-valuenow="0" id="stat-2" data-target="42" data-suffix="ms">
+<div class="digit-roller" id="roller-2"></div>
+<span class="stat-suffix">ms</span>
+</div>
+<p class="stat-label">Average Latency</p>
+<div class="stat-bar"><div class="bar-fill" style="--target-scale:0.95"></div></div>
+</div>
+
+<div class="stat-item">
+<div class="stat-number-wrap" role="status" aria-live="polite" aria-label="99.9% uptime" aria-valuemin="0" aria-valuemax="999" aria-valuenow="0" id="stat-3" data-target="999" data-suffix="%">
+<div class="digit-roller" id="roller-3"></div>
+<span class="stat-suffix" style="font-size:1.5rem">%</span>
+</div>
+<p class="stat-label">Uptime SLA</p>
+<div class="stat-bar"><div class="bar-fill" style="--target-scale:0.999"></div></div>
+</div>
+
+<div class="stat-item">
+<div class="stat-number-wrap" role="status" aria-live="polite" aria-label="12 thousand API requests per second" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0" id="stat-4" data-target="12" data-suffix="k/s">
+<div class="digit-roller" id="roller-4"></div>
+<span class="stat-suffix" style="font-size:1.5rem">k/s</span>
+</div>
+<p class="stat-label">API Requests/sec</p>
+<div class="stat-bar"><div class="bar-fill" style="--target-scale:0.75"></div></div>
+</div>
+</div>
+
+<div class="tech-tags-section">
+<p class="tech-tags-label">Technology Stack</p>
+<div class="tech-tags" role="group" aria-label="Technology stack">
+<span class="mag-tag" role="img" aria-label="PyTorch technology tag" style="--delay:0s"><span class="tag-dot"></span>PyTorch</span>
+<span class="mag-tag" role="img" aria-label="CUDA technology tag" style="--delay:0.3s"><span class="tag-dot"></span>CUDA</span>
+<span class="mag-tag" role="img" aria-label="Kubernetes technology tag" style="--delay:0.6s"><span class="tag-dot"></span>Kubernetes</span>
+<span class="mag-tag" role="img" aria-label="Rust technology tag" style="--delay:0.9s"><span class="tag-dot"></span>Rust</span>
+<span class="mag-tag" role="img" aria-label="gRPC technology tag" style="--delay:1.2s"><span class="tag-dot"></span>gRPC</span>
+<span class="mag-tag" role="img" aria-label="ONNX technology tag" style="--delay:1.5s"><span class="tag-dot"></span>ONNX</span>
+<span class="mag-tag" role="img" aria-label="Redis technology tag" style="--delay:1.8s"><span class="tag-dot"></span>Redis</span>
+<span class="mag-tag" role="img" aria-label="ClickHouse technology tag" style="--delay:2.1s"><span class="tag-dot"></span>ClickHouse</span>
+<span class="mag-tag" role="img" aria-label="Kafka technology tag" style="--delay:2.4s"><span class="tag-dot"></span>Kafka</span>
+<span class="mag-tag" role="img" aria-label="TensorRT technology tag" style="--delay:2.7s"><span class="tag-dot"></span>TensorRT</span>
+<span class="mag-tag" role="img" aria-label="Triton technology tag" style="--delay:3s"><span class="tag-dot"></span>Triton</span>
+<span class="mag-tag" role="img" aria-label="VLLM technology tag" style="--delay:3.3s"><span class="tag-dot"></span>vLLM</span>
+</div>
+</div>
+
+</div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section id="cta" aria-label="Call to action section">
+<div id="floating-orb" aria-hidden="true"></div>
+<div class="cta-inner">
+<h2 class="cta-title">Ready to <span class="glitch-phrase" data-text="orchestrate" aria-hidden="true">orchestrate</span><span class="sr-only">orchestrate</span> intelligence?</h2>
+<p class="cta-subtitle">Join 2,400+ teams building the next generation of AI-native applications on NeuroFlux infrastructure.</p>
+<div class="dual-cta" role="group" aria-label="Call to action buttons">
+<button class="cta-btn magnetic-btn" aria-label="Start building with NeuroFlux for free" data-magnetic="true" id="cta-main-btn">Start Building Free</button>
+<button class="secondary-cta" aria-label="Schedule a live demonstration">Schedule Demo</button>
+</div>
+</div>
+</section>
+
+</main>
+
+<footer aria-label="Site footer">
+<p>&copy; 2024 NeuroFlux Inc. All rights reserved. &nbsp;·&nbsp; <a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a> &nbsp;·&nbsp; <a href="#">Security</a></p>
+</footer>
+
+<style>
+.sr-only{
+position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+@keyframes tagFloat{
+0%,100%{transform:translateY(0) rotate(0deg)}
+35%{transform:translateY(-10px) rotate(-2deg)}
+65%{transform:translateY(6px) rotate(3deg)}
+}
+</style>
+
+<script>
+(function(){
+'use strict';
+
+const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+const PERF = new URLSearchParams(window.location.search).get('perf') === '1';
+const log = DEBUG ? (...a) => console.log('[NF]', ...a) : () => {};
+const perf = PERF ? (label) => console.log(`[PERF] ${label}: ${performance.now().toFixed(2)}ms`) : () => {};
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = window.innerWidth <= 768;
+const isUltraMobile = window.innerWidth <= 390;
+
+/* ===========================
+   AMBIENT GLOW (T-39)
+=========================== */
+try {
+  const glow = document.getElementById('ambient-glow');
+  let glowX = window.innerWidth / 2;
+  let glowY = window.innerHeight / 2;
+  let targetGlowX = glowX;
+  let targetGlowY = glowY;
+  let glowRaf;
+
+  if (!prefersReducedMotion) {
+    document.addEventListener('mousemove', (e) => {
+      targetGlowX = e.clientX;
+      targetGlowY = e.clientY;
+    });
+
+    function animateGlow() {
+      glowX += (targetGlowX - glowX) * 0.085;
+      glowY += (targetGlowY - glowY) * 0.085;
+      glow.style.left = glowX + 'px';
+      glow.style.top = glowY + 'px';
+      glowRaf = requestAnimationFrame(animateGlow);
+    }
+    animateGlow();
+    log('Ambient glow initialized');
+  }
+
+  window.addEventListener('beforeunload', () => {
+    if (glowRaf) cancelAnimationFrame(glowRaf);
+    glow.remove();
+  });
+} catch(e) { console.warn('Ambient glow error:', e); }
+
+/* ===========================
+   CANVAS PARTICLE SYSTEM
+=========================== */
+try {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+
+  if (!ctx) throw new Error('Canvas context unavailable');
+
+  let PARTICLE_COUNT = isUltraMobile ? 100 : (isMobile ? 120 : 180);
+  let LINK_DIST = isMobile ? 90 : 110;
+  let REPEL_DIST = 150;
+  let mouseX = -9999, mouseY = -9999;
+  let particles = [];
+  let canvasRaf;
+  let lastFrame = 0;
+  const FPS_LIMIT = 60;
+  const FRAME_INTERVAL = 1000 / FPS_LIMIT;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    perf('Canvas resize');
+  }
+  resizeCanvas();
+
+  class Particle {
+    constructor() {
+      this.reset();
+    }
+    reset() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.r = 3 + Math.random() * 6;
+      this.alpha = 0.6 + Math.random() * 0.35;
+      const speed = 0.8 + Math.random() * 0.6;
+      const angle = Math.random() * Math.PI * 2;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+      this.ax = 0; this.ay = 0;
+    }
+    update() {
+      const dx = this.x - mouseX;
+      const dy = this.y - mouseY;
+      const dist = Math.hypot(dx, dy);
+      if (dist < REPEL_DIST && dist > 0) {
+        const force = 0.12;
+        this.ax += (dx / dist) * force;
+        this.ay += (dy / dist) * force;
+      }
+      this.vx = (this.vx + this.ax) * 0.92;
+      this.vy = (this.vy + this.ay) * 0.92;
+      this.ax = 0; this.ay = 0;
+      this.x += this.vx;
+      this.y += this.vy;
+      if (this.x < -20) this.x = canvas.width + 20;
+      if (this.x > canvas.width + 20) this.x = -20;
+      if (this.y < -20) this.y = canvas.height + 20;
+      if (this.y > canvas.height + 20) this.y = -20;
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(102,153,255,${this.alpha})`;
+      ctx.fill();
+    }
+  }
+
+  function initParticles() {
+    particles = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push(new Particle());
+    }
+  }
+  initParticles();
+
+  function drawLinks() {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < LINK_DIST) {
+          const alpha = (1 - dist / LINK_DIST) * 0.25;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(102,153,255,${alpha})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function renderCanvas(timestamp) {
+    const elapsed = timestamp - lastFrame;
+    if (elapsed < FRAME_INTERVAL) {
+      canvasRaf = requestAnimationFrame(renderCanvas);
+      return;
+    }
+    lastFrame = timestamp - (elapsed % FRAME_INTERVAL);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!prefersReducedMotion) {
+      for (const p of particles) p.update();
+    }
+    drawLinks();
+    for (const p of particles) p.draw();
+    canvasRaf = requestAnimationFrame(renderCanvas);
+  }
+
+  if (!prefersReducedMotion) {
+    canvasRaf = requestAnimationFrame(renderCanvas);
+  } else {
+    for (const p of particles) p.draw();
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+  canvas.addEventListener('mouseleave', () => {
+    mouseX = -9999; mouseY = -9999;
+  });
+
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    PARTICLE_COUNT = window.innerWidth <= 390 ? 100 : (window.innerWidth <= 768 ? 120 : 180);
+    LINK_DIST = window.innerWidth <= 768 ? 90 : 110;
+    initParticles();
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (canvasRaf) cancelAnimationFrame(canvasRaf);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  log('Canvas particles initialized:', PARTICLE_COUNT);
+  perf('Canvas init');
+
+} catch(e) {
+  console.warn('Canvas fallback activated:', e);
+  const hero = document.getElementById('hero');
+  if (hero) {
+    hero.style.background = 'radial-gradient(ellipse at 50% 50%, rgba(74,58,255,0.15) 0%, transparent 70%), linear-gradient(135deg,#0a0a1a,#0d0d24)';
+  }
+}
+
+/* ===========================
+   HERO TITLE ANIMATION
+=========================== */
+try {
+  const neuroChars = document.getElementById('neuro-chars');
+  const glitchEl = document.getElementById('glitch-text-el');
+  const subtitle = document.getElementById('hero-subtitle');
+
+  const neuroText = 'NEURO';
+  const fluxText = 'FLUX';
+
+  neuroText.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch;
+    span.className = 'char';
+    neuroChars.appendChild(span);
+  });
+
+  const fluxChars = [];
+  glitchEl.textContent = '';
+  fluxText.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch;
+    span.className = 'char';
+    glitchEl.appendChild(span);
+    fluxChars.push(span);
+  });
+
+  const allChars = [...neuroChars.querySelectorAll('.char'), ...fluxChars];
+
+  if (!prefersReducedMotion) {
+    allChars.forEach((span, i) => {
+      setTimeout(() => {
+        span.classList.add('visible');
+        span.style.animationDelay = '0ms';
+        log(`Char ${i} revealed`);
+      }, i * 55);
+    });
+
+    const lastDelay = (allChars.length - 1) * 55 + 950;
+    setTimeout(() => {
+      glitchEl.classList.add('glitching');
+      glitchEl.setAttribute('data-text', 'FLUX');
+
+      let glitchCount = 0;
+      const maxGlitch = 6;
+      const glitchInterval = setInterval(() => {
+        glitchCount++;
+        if (glitchCount >= maxGlitch) {
+          clearInterval(glitchInterval);
+        }
+      }, 150);
+
+      setTimeout(() => {
+        glitchEl.classList.remove('glitching');
+      }, 1200);
+
+      log('Glitch sequence triggered');
+    }, lastDelay);
+
+    subtitle.classList.add('visible');
+  } else {
+    allChars.forEach(span => {
+      span.style.opacity = '1';
+      span.style.transform = 'none';
+      span.style.filter = 'none';
+    });
+    subtitle.style.opacity = '1';
+    subtitle.style.transform = 'none';
+    subtitle.style.filter = 'none';
+  }
+} catch(e) { console.warn('Hero animation error:', e); }
+
+/* ===========================
+   MAGNETIC BUTTONS (T-03)
+=========================== */
+try {
+  function initMagneticBtn(btn) {
+    if (!btn) return;
+    let isHovered = false;
+
+    btn.addEventListener('mouseenter', () => {
+      isHovered = true;
+      btn.style.transition = 'transform 0.1s ease, box-shadow 0.3s ease, color 0.2s ease';
+    });
+
+    btn.addEventListener('mousemove', (e) => {
+      if (!isHovered || prefersReducedMotion) return;
+      const rect = btn.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      btn.style.transform = `translate(${x * 0.35}px, ${y * 0.35}px)`;
+      log('Magnetic move:', x.toFixed(1), y.toFixed(1));
+    });
+
+    btn.addEventListener('mouseleave', () => {
+      isHovered = false;
+      btn.style.transition = 'transform 0.5s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease, color 0.2s ease';
+      btn.style.transform = 'translate(0,0)';
+    });
+
+    btn.addEventListener('click', (e) => {
+      triggerParticleBurst(e.clientX, e.clientY);
+      btn.style.transform = 'scale(0.97)';
+      setTimeout(() => { btn.style.transform = 'translate(0,0)'; }, 150);
+    });
+  }
+
+  document.querySelectorAll('.magnetic-btn').forEach(initMagneticBtn);
+} catch(e) { console.warn('Magnetic button error:', e); }
+
+/* ===========================
+   PARTICLE BURST ON CLICK
+=========================== */
+function triggerParticleBurst(cx, cy) {
+  if (prefersReducedMotion) return;
+  try {
+    const count = 42;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle-burst';
+      const size = 3 + Math.random() * 6;
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const dist = 60 + Math.random() * 60;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist;
+      const hue = 200 + Math.random() * 60;
+      p.style.cssText = `
+        width:${size}px;height:${size}px;
+        left:${cx}px;top:${cy}px;
+        background:hsl(${hue},80%,65%);
+        opacity:1;
+        transform:translate(-50%,-50%) rotate(${Math.random()*360}deg);
+        transition:transform 0.9s cubic-bezier(0.22,0.72,0.48,0.99),opacity 0.9s ease;
+      `;
+      document.body.appendChild(p);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          p.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) rotate(${360 + Math.random()*360}deg)`;
+          p.style.opacity = '0';
+        });
+      });
+      setTimeout(() => p.remove(), 950);
+    }
+    log('Particle burst triggered:', count, 'particles');
+  } catch(e) { console.warn('Particle burst error:', e); }
+}
+
+/* ===========================
+   FEATURE CARDS 3D
+=========================== */
+try {
+  if (!isMobile) {
+    document.querySelectorAll('.feature-card').forEach(card => {
+      const front = card.querySelector('.card-front');
+
+      card.addEventListener('mousemove', (e) => {
+        if (prefersReducedMotion) return;
+        const rect = card.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        const mx = ((e.clientX - rect.left) / rect.width * 100).toFixed(1) + '%';
+        const my = ((e.clientY - rect.top) / rect.height * 100).toFixed(1) + '%';
+        if (front) {
+          front.style.setProperty('--mx', mx);
+          front.style.setProperty('--my', my);
+          front.style.setProperty('--x', x.toFixed(3));
+          front.style.setProperty('--y', y.toFixed(3));
+        }
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const inner = card.querySelector('.card-inner');
+          const isFlipped = inner.style.transform === 'rotateY(180deg)';
+          inner.style.transform = isFlipped ? 'rotateY(0deg)' : 'rotateY(180deg)';
+        }
+      });
+    });
+  }
+} catch(e) { console.warn('Feature card error:', e); }
+
+/* ===========================
+   FEATURE TITLE SCRAMBLE (B-28)
+=========================== */
+try {
+  const featureTitles = document.querySelectorAll('.feature-title[data-scramble]');
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  function scrambleText(el, finalText, duration) {
+    if (prefersReducedMotion) { el.textContent = finalText; return; }
+    const start = performance.now();
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const revealCount = Math.floor(progress * finalText.length);
+      let display = '';
+      for (let i = 0; i < finalText.length; i++) {
+        if (finalText[i] === ' ') { display += ' '; continue; }
+        if (i < revealCount) {
+          display += finalText[i];
+        } else {
+          display += chars[Math.floor(Math.random() * chars.length)];
+        }
+      }
+      el.textContent = display;
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = finalText;
+    }
+    requestAnimationFrame(step);
+  }
+
+  const featureObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const text = el.getAttribute('data-text');
+        if (text) scrambleText(el, text, 1400);
+        featureObserver.unobserve(el);
+      }
+    });
+  }, { rootMargin: '0px 0px -100px 0px' });
+
+  featureTitles.forEach(el => featureObserver.observe(el));
+} catch(e) { console.warn('Scramble error:', e); }
+
+/* ===========================
+   STATS COUNTER (I-162)
+=========================== */
+try {
+  function easeOutExpo(t) {
+    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  }
+
+  function buildRoller(container, digits) {
+    container.innerHTML = '';
+    const str = String(digits);
+    for (let i = 0; i < str.length; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'digit-slot';
+      for (let d = 0; d <= 9; d++) {
+        const face = document.createElement('div');
+        face.className = 'digit-face';
+        face.textContent = d;
+        slot.appendChild(face);
+      }
+      slot.style.height = '1.2em';
+      slot.style.overflow = 'hidden';
+      container.appendChild(slot);
+    }
+  }
+
+  function animateRoller(container, target, duration) {
+    if (prefersReducedMotion) {
+      const str = String(target);
+      buildRoller(container, target);
+      const slots = container.querySelectorAll('.digit-slot');
+      slots.forEach((slot, i) => {
+        const d = parseInt(str[i]);
+        slot.style.transform = `translateY(-${d * 1.2}em)`;
+      });
+      return;
+    }
+
+    const str = String(target);
+    buildRoller(container, target);
+    const slots = container.querySelectorAll('.digit-slot');
+    const start = performance.now();
+
+    function step(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = easeOutExpo(progress);
+      const currentVal = Math.floor(ease * target);
+      const currentStr = String(Math.max(0, currentVal)).padStart(str.length, '0');
+
+      slots.forEach((slot, i) => {
+        const d = parseInt(currentStr[i] || '0');
+        slot.style.transform = `translateY(-${d * 1.2}em)`;
+        slot.style.transition = `transform ${0.1}s ease`;
+      });
+
+      if (progress < 1) requestAnimationFrame(step);
+      else {
+        slots.forEach((slot, i) => {
+          slot.style.transform = `translateY(-${parseInt(str[i]) * 1.2}em)`;
+        });
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  const statItems = document.querySelectorAll('[data-target]');
+  statItems.forEach(item => {
+    const roller = item.querySelector('.digit-roller');
+    if (roller) {
+      buildRoller(roller, 0);
+    }
+  });
+
+  const statObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.getAttribute('data-target'));
+        const roller = el.querySelector('.digit-roller');
+        const bars = document.querySelectorAll('#stats .bar-fill');
+
+        if (roller) animateRoller(roller, target, 2400);
+
+        el.setAttribute('aria-valuenow', target);
+        log('Stat counter started:', target);

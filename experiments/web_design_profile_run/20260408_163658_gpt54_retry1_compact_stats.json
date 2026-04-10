@@ -1,0 +1,117 @@
+{
+  "timestamp": "20260408_163658",
+  "query": "Generate a compact single-file HTML landing page for an AI automation workspace. Keep the page concise but complete. Every visible button must have enforced default, hover, active, and focus-visible states. Fully wire mobile nav, FAQ accordion, tabs, toast, modal, animated counters, and one compact interactive sandbox section. Keep all copy coherent and avoid random wildcard headings.",
+  "domain": "web_design",
+  "openai_base_url": "https://kuaipao.ai/v1",
+  "light_model": "gpt-5.4-mini",
+  "prompt_build_model": "gpt-5.4-mini",
+  "generation_model": "gpt-5.4",
+  "calls": [
+    {
+      "stage": "classify_intent",
+      "model": "gpt-5.4-mini",
+      "reasoning_effort": "low",
+      "max_tokens": 2000,
+      "prompt_chars": 730,
+      "system_chars": 0,
+      "output_chars": 15,
+      "input_tokens": 154,
+      "output_tokens": 26
+    },
+    {
+      "stage": "expand_query",
+      "model": "gpt-5.4-mini",
+      "reasoning_effort": "low",
+      "max_tokens": 2000,
+      "prompt_chars": 740,
+      "system_chars": 0,
+      "output_chars": 775,
+      "input_tokens": 155,
+      "output_tokens": 157
+    },
+    {
+      "stage": "build_prompt",
+      "model": "gpt-5.4-mini",
+      "reasoning_effort": "low",
+      "max_tokens": 4500,
+      "prompt_chars": 39822,
+      "system_chars": 644,
+      "output_chars": 16029,
+      "input_tokens": 20699,
+      "output_tokens": 4020
+    },
+    {
+      "stage": "generate",
+      "model": "gpt-5.4",
+      "reasoning_effort": "low",
+      "max_tokens": 7000,
+      "prompt_chars": 16544,
+      "system_chars": 402,
+      "output_chars": 87016,
+      "input_tokens": 4069,
+      "output_tokens": 23376
+    }
+  ],
+  "totals": {
+    "input_tokens": 25077,
+    "output_tokens": 27579
+  },
+  "context_chars": 39231,
+  "built_prompt_chars": 16029,
+  "generation_chars": 87016,
+  "char_retention_ratio": 0.4086,
+  "compression_rounds": [
+    {
+      "round": 1,
+      "model": "gpt-5.4-mini",
+      "input_tokens": 20699,
+      "output_tokens": 4020,
+      "token_retention_ratio": 0.1942
+    }
+  ],
+  "retrieved_chunks": [
+    "[techniques] T-29 旋转词语标题（Rotating Word Hero）",
+    "[techniques] T-36 文字模糊聚焦入场（Text Blur Focus Reveal）",
+    "[flow] Step 1：确立设计方向",
+    "[flow] Step 3：生成 Round 1 Prompt（整体框架）",
+    "[style] # W码 / P风格 / 页面架构 速查库",
+    "[flow] Round 2",
+    "[style] 🃏 W码 — Wild Card 创意互动（每条强制 ≥ 2 个，且必须新颖）",
+    "[flow] 🃏 W码 — Wild Card 创意互动（每条强制 ≥ 2 个，且必须新颖）",
+    "[flow] 可复现技法库",
+    "[flow] # 生成流程指令（主流程 + 约束 + Step 1-6）"
+  ],
+  "expanded_queries": [
+    "What compact single-file HTML/CSS/JS visual style should an AI automation workspace landing page use, and what techniques best support a concise yet polished one-page design?",
+    "What interactive behaviors and state changes are required for mobile navigation, FAQ accordion, tabs, toast notifications, modal dialogs, animated counters, and a compact interactive sandbox section?",
+    "What hard constraints and acceptance requirements must be enforced, including default/hover/active/focus-visible states for every visible button, coherent copy, compactness, and no random wildcard headings?",
+    "What generation flow and page structure should the single-file HTML follow so the landing page remains concise but complete, with all sections wired in a logical order and minimal dependencies?",
+    "Generate a compact single-file HTML landing page for an AI automation workspace. Keep the page concise but complete. Every visible button must have enforced default, hover, active, and focus-visible states. Fully wire mobile nav, FAQ accordion, tabs, toast, modal, animated counters, and one compact interactive sandbox section. Keep all copy coherent and avoid random wildcard headings."
+  ],
+  "quality_check": {
+    "pass": true,
+    "issues": [],
+    "checks": {
+      "html_closure": true,
+      "google_fonts": true,
+      "css_variables": true,
+      "semantic_sections": true,
+      "inline_only": true,
+      "forbidden_cdn": true,
+      "dead_anchors": true,
+      "button_reset": true,
+      "modal": true,
+      "accordion": true,
+      "toast": true,
+      "tabs": true,
+      "counter_animation": true,
+      "scroll_reveal": true,
+      "nav_scroll_state": true,
+      "focus_visible": true,
+      "responsive_390": true,
+      "avoid_pure_black_bg": true
+    }
+  },
+  "retry_count": 0,
+  "html_path": "experiments\\web_design_profile_run\\20260408_163658_gpt54_retry1_compact.html"
+}
