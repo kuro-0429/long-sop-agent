@@ -43,6 +43,7 @@ class ChromaStore:
                     "id": results["ids"][0][i],
                     "content": results["documents"][0][i],
                     "title": results["metadatas"][0][i]["title"],
+                    "source": results["metadatas"][0][i].get("source"),
                     "score": 1 - results["distances"][0][i],
                 }
             )

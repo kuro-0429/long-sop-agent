@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -40,6 +41,12 @@ _validator_cache: dict[str, object] = {}
 
 def resolve_profile(state: AgentState) -> DomainProfile:
     return get_domain_profile(state.get("domain"))
+
+
+def safe_print(text: str) -> None:
+    encoding = sys.stdout.encoding or "utf-8"
+    sanitized = text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    print(sanitized)
 
 
 def get_openai_api_key() -> str:
@@ -268,6 +275,37 @@ def clean_model_output(result: str, output_format: str) -> str:
     return text.strip()
 
 
+def append_call_log(state: AgentState, entry: dict[str, Any]) -> list[dict[str, Any]]:
+    logs = list(state.get("call_logs") or [])
+    logs.append(entry)
+    return logs
+
+
+def make_call_log(
+    *,
+    stage: str,
+    model: str,
+    reasoning_effort: str,
+    max_tokens: int,
+    prompt: str,
+    system: str,
+    output: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> dict[str, Any]:
+    return {
+        "stage": stage,
+        "model": model,
+        "reasoning_effort": reasoning_effort,
+        "max_tokens": max_tokens,
+        "prompt_chars": len(prompt),
+        "system_chars": len(system),
+        "output_chars": len(output),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+    }
+
+
 def format_issue_block(state: AgentState) -> str:
     issues = (state.get("quality_check") or {}).get("issues") or []
     if not issues:
@@ -301,15 +339,34 @@ User request:
 
 Return only one label."""
 
-    intent, in_tok, out_tok = call_light_model(prompt)
-    if intent not in set(INTENT_TYPES):
-        intent = INTENT_DEFAULT
+    raw_intent, in_tok, out_tok = call_light_model(prompt)
+    intent = raw_intent if raw_intent in set(INTENT_TYPES) else INTENT_DEFAULT
+    log_entry = make_call_log(
+        stage="classify_intent",
+        model=LIGHT_MODEL,
+        reasoning_effort=LIGHT_REASONING_EFFORT,
+        max_tokens=2000,
+        prompt=prompt,
+        system="",
+        output=raw_intent,
+        input_tokens=in_tok,
+        output_tokens=out_tok,
+    )
 
     print(f"[classify_intent] input={in_tok}, output={out_tok}, {state['user_query']} -> {intent}")
-    return {"intent": intent}
+    return {
+        "intent": intent,
+        "intent_metadata": {
+            "raw_intent": raw_intent,
+            "final_intent": intent,
+            "input_tokens": in_tok,
+            "output_tokens": out_tok,
+        },
+        "call_logs": append_call_log(state, log_entry),
+    }
 
 
-def expand_query(query: str, intent: str, profile: DomainProfile) -> list[str]:
+def expand_query(query: str, intent: str, profile: DomainProfile) -> tuple[list[str], dict[str, Any]]:
     axes = "\n".join(f"- {axis}" for axis in profile.query_axes)
     prompt = f"""Break the user request into 4 retrieval sub-queries that cover distinct angles.
 
@@ -328,13 +385,25 @@ Return exactly 4 lines with no numbering and no explanation."""
     print(f"[expand_query] profile={profile.name}, input={in_tok}, output={out_tok}")
     queries = [line.strip() for line in result.splitlines() if line.strip()]
     queries.append(query)
-    return queries[:5]
+    log_entry = make_call_log(
+        stage="expand_query",
+        model=LIGHT_MODEL,
+        reasoning_effort=LIGHT_REASONING_EFFORT,
+        max_tokens=2000,
+        prompt=prompt,
+        system="",
+        output=result,
+        input_tokens=in_tok,
+        output_tokens=out_tok,
+    )
+    return queries[:5], log_entry
 
 
 def retrieve_context(state: AgentState) -> dict:
     profile = resolve_profile(state)
     embedder, stores, reranker = get_retriever(profile)
-    expanded = expand_query(state["user_query"], state["intent"], profile)
+    retrieval_start = time.perf_counter()
+    expanded, expansion_log = expand_query(state["user_query"], state["intent"], profile)
 
     candidates = []
     seen_ids = set()
@@ -353,6 +422,19 @@ def retrieve_context(state: AgentState) -> dict:
     grouped_hits: dict[str, list[dict]] = defaultdict(list)
     for item in reranked:
         grouped_hits[item["collection"]].append(item)
+
+    retrieved_details = [
+        {
+            "rank": idx,
+            "id": item["id"],
+            "title": item["title"],
+            "collection": item["collection"],
+            "source": item.get("source"),
+            "score": item.get("score"),
+            "rerank_score": item.get("rerank_score"),
+        }
+        for idx, item in enumerate(reranked, start=1)
+    ]
 
     docs = load_context_documents(profile)
     context_parts = [
@@ -373,18 +455,29 @@ def retrieve_context(state: AgentState) -> dict:
         context_parts.append(format_retrieved_block(grouped_hits.get(collection, []), f"RETRIEVED_{collection.upper()}"))
 
     context = "\n\n".join(context_parts)
+    retrieval_latency_ms = int((time.perf_counter() - retrieval_start) * 1000)
 
     print(
         "[retrieve_context] "
         f"profile={profile.name}, candidates={len(candidates)}, reranked={len(reranked)}"
     )
     for item in reranked:
-        print(f"  [{item['rerank_score']:.3f}] [{item['collection']}] {item['title']}")
+        safe_print(f"  [{item['rerank_score']:.3f}] [{item['collection']}] {item['title']}")
 
     return {
         "retrieved_chunks": [f"[{item['collection']}] {item['title']}" for item in reranked],
+        "retrieved_chunk_details": retrieved_details,
         "context": context,
         "expanded_queries": expanded,
+        "call_logs": append_call_log(state, expansion_log),
+        "retrieval_metadata": {
+            "profile": profile.name,
+            "expanded_queries": expanded,
+            "candidate_count": len(candidates),
+            "retrieved_count": len(reranked),
+            "retrieval_latency_ms": retrieval_latency_ms,
+            "collections_hit": sorted({item["collection"] for item in reranked}),
+        },
     }
 
 
@@ -411,8 +504,31 @@ Context:
         max_tokens=16000,
         reasoning_effort=PROMPT_BUILD_REASONING_EFFORT,
     )
+    log_entry = make_call_log(
+        stage="build_prompt",
+        model=PROMPT_BUILD_MODEL,
+        reasoning_effort=PROMPT_BUILD_REASONING_EFFORT,
+        max_tokens=16000,
+        prompt=prompt,
+        system=profile.prompt_build_system,
+        output=built_prompt,
+        input_tokens=in_tok,
+        output_tokens=out_tok,
+    )
     print(f"[build_prompt] profile={profile.name}, input={in_tok}, output={out_tok}, chars={len(built_prompt)}")
-    return {"built_prompt": built_prompt}
+    return {
+        "built_prompt": built_prompt,
+        "call_logs": append_call_log(state, log_entry),
+        "compression_metadata": {
+            "model": PROMPT_BUILD_MODEL,
+            "reasoning_effort": PROMPT_BUILD_REASONING_EFFORT,
+            "input_tokens": in_tok,
+            "output_tokens": out_tok,
+            "input_chars": len(state["context"]),
+            "output_chars": len(built_prompt),
+            "retention_ratio": round(out_tok / in_tok, 4) if in_tok else None,
+        },
+    }
 
 
 def generate(state: AgentState) -> dict:
@@ -438,11 +554,34 @@ Generate the final deliverable now."""
         reasoning_effort=GENERATION_REASONING_EFFORT,
     )
     cleaned = clean_model_output(result, profile.output_format)
+    log_entry = make_call_log(
+        stage="generate",
+        model=GENERATION_MODEL,
+        reasoning_effort=GENERATION_REASONING_EFFORT,
+        max_tokens=32000,
+        prompt=prompt,
+        system=profile.generate_system,
+        output=cleaned,
+        input_tokens=in_tok,
+        output_tokens=out_tok,
+    )
     print(
         f"[generate] profile={profile.name}, input={in_tok}, output={out_tok}, "
         f"chars={len(cleaned)}"
     )
-    return {"generation_result": cleaned}
+    return {
+        "generation_result": cleaned,
+        "call_logs": append_call_log(state, log_entry),
+        "generation_metadata": {
+            "model": GENERATION_MODEL,
+            "reasoning_effort": GENERATION_REASONING_EFFORT,
+            "input_tokens": in_tok,
+            "output_tokens": out_tok,
+            "input_chars": len(prompt),
+            "output_chars": len(cleaned),
+            "output_format": profile.output_format,
+        },
+    }
 
 
 def quality_check(state: AgentState) -> dict:
@@ -454,7 +593,7 @@ def quality_check(state: AgentState) -> dict:
 
     print(f"[quality_check] profile={profile.name}, pass={passed}, retry_count={retry_count}")
     for issue in report["issues"][:8]:
-        print(f"  - [{issue['severity']}] {issue['message']}")
+        safe_print(f"  - [{issue['severity']}] {issue['message']}")
 
     return {
         "quality_check": report,

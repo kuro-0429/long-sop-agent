@@ -1,0 +1,316 @@
+[
+  {
+    "task_id": "compact_lp_01",
+    "profile": "web_design",
+    "query": "Generate a compact single-file HTML landing page for an AI automation workspace. Keep the page concise but complete. Every visible button must have enforced default, hover, active, and focus-visible states. Fully wire mobile nav, FAQ accordion, tabs, toast, modal, animated counters, and one compact interactive sandbox section. Keep all copy coherent and avoid random wildcard headings.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "focus-visible",
+      "FAQ accordion",
+      "tabs",
+      "toast",
+      "modal",
+      "animated counters",
+      "mobile nav"
+    ],
+    "oracle_chunk_ids": [
+      "T-29",
+      "T-36"
+    ],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "accordion",
+        "tabs",
+        "toast",
+        "modal",
+        "focus_visible",
+        "responsive_390"
+      ]
+    },
+    "notes": "Current frozen baseline task."
+  },
+  {
+    "task_id": "compact_lp_02",
+    "profile": "web_design",
+    "query": "Create a concise single-file HTML landing page for an AI research copilot. Use a dark but not pure black palette, clear typography, and one subtle hero interaction. Every CTA must expose default, hover, active, and focus-visible states. Include responsive nav, one FAQ accordion, a modal demo trigger, and a compact pricing comparison.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "dark but not pure black palette",
+      "focus-visible",
+      "responsive nav",
+      "FAQ accordion",
+      "modal"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "accordion",
+        "modal",
+        "focus_visible",
+        "responsive_390"
+      ]
+    },
+    "notes": "Compact product page with lighter interaction load."
+  },
+  {
+    "task_id": "compact_lp_03",
+    "profile": "web_design",
+    "query": "Produce a compact single-file HTML page for a workflow orchestration studio. Keep the layout tight and professional, add one controlled text reveal effect, fully wired tabs, animated counters, and a keyboard-friendly mobile menu. Avoid bloated sections and random headings.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "single-file HTML",
+      "tabs",
+      "animated counters",
+      "keyboard-friendly mobile menu"
+    ],
+    "oracle_chunk_ids": [
+      "T-36"
+    ],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "tabs",
+        "counter_animation",
+        "focus_visible"
+      ]
+    },
+    "notes": "Compact layout with moderate interaction."
+  },
+  {
+    "task_id": "compact_lp_04",
+    "profile": "web_design",
+    "query": "Build a concise HTML landing page for a secure AI ops dashboard. Require semantic sections, inline-only assets, no dead anchors, strong accessibility states, and a toast plus modal pair for guided actions. Keep copy coherent and enterprise-facing.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "semantic sections",
+      "inline-only assets",
+      "no dead anchors",
+      "toast",
+      "modal"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "semantic_sections",
+        "inline_only",
+        "dead_anchors",
+        "toast",
+        "modal"
+      ]
+    },
+    "notes": "Constraint-led compact page."
+  },
+  {
+    "task_id": "interaction_heavy_01",
+    "profile": "web_design",
+    "query": "Create a single-file HTML page for an AI prototyping lab with strong creative interaction. Fully wire responsive navigation, modal, FAQ accordion, toast notifications, tabs, animated counters, and scroll reveal. Buttons must feel tactile but still preserve accessibility states.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "responsive navigation",
+      "modal",
+      "FAQ accordion",
+      "toast notifications",
+      "tabs",
+      "animated counters",
+      "scroll reveal"
+    ],
+    "oracle_chunk_ids": [
+      "T-29",
+      "T-36"
+    ],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "accordion",
+        "tabs",
+        "toast",
+        "modal",
+        "counter_animation",
+        "scroll_reveal"
+      ]
+    },
+    "notes": "Heavy interaction benchmark."
+  },
+  {
+    "task_id": "interaction_heavy_02",
+    "profile": "web_design",
+    "query": "Generate a vivid AI design studio landing page with a rotating hero word moment, layered reveal transitions, tabs, counters, and a modal walkthrough. Every interactive element must have visible focus states and fully working pointer and keyboard behavior.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "rotating hero word",
+      "reveal transitions",
+      "tabs",
+      "counters",
+      "modal walkthrough",
+      "visible focus states"
+    ],
+    "oracle_chunk_ids": [
+      "T-29",
+      "T-36"
+    ],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "tabs",
+        "modal",
+        "counter_animation",
+        "focus_visible"
+      ]
+    },
+    "notes": "Technique-sensitive interaction benchmark."
+  },
+  {
+    "task_id": "interaction_heavy_03",
+    "profile": "web_design",
+    "query": "Build an HTML launch page for an AI command center with a small but fully functioning sandbox panel, toast feedback, modal confirmation, tabs for scenarios, and counters for throughput metrics. Keep the page coherent and mobile-safe.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "sandbox panel",
+      "toast feedback",
+      "modal confirmation",
+      "tabs",
+      "counters",
+      "mobile-safe"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "toast",
+        "modal",
+        "tabs",
+        "counter_animation",
+        "responsive_390"
+      ]
+    },
+    "notes": "Interaction set close to real use case."
+  },
+  {
+    "task_id": "interaction_heavy_04",
+    "profile": "web_design",
+    "query": "Produce a single-file page for a multi-agent workspace with strong but controlled motion. Include responsive nav, FAQ accordion, modal, toast, tabs, counters, and scroll-triggered reveals. Avoid random wildcard headings or disconnected section names.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "responsive nav",
+      "FAQ accordion",
+      "modal",
+      "toast",
+      "tabs",
+      "counters",
+      "scroll-triggered reveals",
+      "avoid random wildcard headings"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "accordion",
+        "modal",
+        "toast",
+        "tabs",
+        "counter_animation",
+        "scroll_reveal"
+      ]
+    },
+    "notes": "Heavy interaction with copy coherence emphasis."
+  },
+  {
+    "task_id": "constraint_heavy_01",
+    "profile": "web_design",
+    "query": "Create a single-file HTML compliance-focused page for an AI audit assistant. Hard requirements: inline-only code, no CDN assets except allowed font loading, semantic HTML sections, no dead anchors, visible focus states, keyboard-safe modal and accordion behavior, and responsive layout down to 390px.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "inline-only code",
+      "semantic HTML sections",
+      "no dead anchors",
+      "visible focus states",
+      "keyboard-safe modal",
+      "responsive layout down to 390px"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "inline_only",
+        "semantic_sections",
+        "dead_anchors",
+        "focus_visible",
+        "responsive_390"
+      ]
+    },
+    "notes": "Validator-heavy constraint benchmark."
+  },
+  {
+    "task_id": "constraint_heavy_02",
+    "profile": "web_design",
+    "query": "Build an accessible single-file landing page for an AI customer support hub. Every visible button and tab trigger must have default, hover, active, and focus-visible states. Keep strong ARIA and keyboard behavior, preserve semantic structure, and avoid pure black backgrounds.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "default hover active focus-visible states",
+      "ARIA",
+      "keyboard behavior",
+      "semantic structure",
+      "avoid pure black backgrounds"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "button_reset",
+        "focus_visible",
+        "semantic_sections",
+        "avoid_pure_black_bg"
+      ]
+    },
+    "notes": "Accessibility-first benchmark."
+  },
+  {
+    "task_id": "repair_01",
+    "profile": "web_design",
+    "query": "Generate a single-file HTML page for an AI control room, but prioritize correctness over flair. Ensure no dead anchors, all interactive elements are fully wired, and all acceptance checks pass even if the visual direction stays conservative.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "no dead anchors",
+      "fully wired interactive elements",
+      "all acceptance checks pass"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "dead_anchors",
+        "modal",
+        "accordion",
+        "tabs",
+        "toast"
+      ]
+    },
+    "notes": "Repair-oriented task for retry loop measurement."
+  },
+  {
+    "task_id": "repair_02",
+    "profile": "web_design",
+    "query": "Produce a compact AI operations landing page that may use creative interactions, but if any validator conflicts appear, fix them in favor of semantic correctness, accessibility, and full interactivity. Keep copy coherent and all states explicit.",
+    "artifact_type": "html",
+    "oracle_constraints": [
+      "semantic correctness",
+      "accessibility",
+      "full interactivity",
+      "copy coherent",
+      "all states explicit"
+    ],
+    "oracle_chunk_ids": [],
+    "validator_expectations": {
+      "pass_required": true,
+      "required_checks": [
+        "semantic_sections",
+        "focus_visible",
+        "button_reset"
+      ]
+    },
+    "notes": "Retry-friendly repair benchmark."
+  }
+]
