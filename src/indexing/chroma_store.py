@@ -16,7 +16,7 @@ class ChromaStore:
         metadatas = []
         for chunk in chunks:
             metadata = {"title": chunk["title"], "source": chunk["source"]}
-            for key in ("heading_path", "parent_id", "level", "part_index"):
+            for key in ("heading_path", "parent_id", "level", "part_index", "source_type"):
                 value = chunk.get(key)
                 if value not in (None, "", []):
                     metadata[key] = value
@@ -53,6 +53,7 @@ class ChromaStore:
                     "content": results["documents"][0][i],
                     "title": results["metadatas"][0][i]["title"],
                     "source": results["metadatas"][0][i].get("source"),
+                    "source_type": results["metadatas"][0][i].get("source_type"),
                     "heading_path": results["metadatas"][0][i].get("heading_path"),
                     "parent_id": results["metadatas"][0][i].get("parent_id"),
                     "level": results["metadatas"][0][i].get("level"),

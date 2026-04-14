@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from src.chunking.fixed_window import merge_paragraphs_with_budget, split_text_with_overlap
+from src.ingestion import ParsedSection, parse_document
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 TECHNIQUE_ID_RE = re.compile(r"\bT-\d+\b")
@@ -103,6 +104,79 @@ def _split_section_with_budget(
     return chunks
 
 
+def _compose_chunk_content(title: str, body: str) -> str:
+    body = body.strip()
+    if not body:
+        return title.strip()
+
+    first_line = body.splitlines()[0].strip()
+    normalized_first = _normalize_title(first_line)
+    if normalized_first.lower() == title.strip().lower():
+        return body
+    return f"{title}\n\n{body}".strip()
+
+
+def _split_parsed_section_with_budget(
+    *,
+    section: ParsedSection,
+    source_name: str,
+    section_index: int,
+    max_chars: int,
+    overlap_chars: int,
+) -> list[dict]:
+    body = section.content.strip()
+    title = section.title.strip() or f"{source_name}-{section_index:03d}"
+    if not body:
+        return []
+
+    base_id = _make_chunk_id(
+        source_name=source_name,
+        section_index=section_index,
+        title=title,
+    )
+    heading_path = list(section.heading_path) or [title]
+    source_type = section.source_type
+
+    def build_chunk(part_index: int, body_text: str, part_title: str) -> dict:
+        return {
+            "id": _make_chunk_id(
+                source_name=source_name,
+                section_index=section_index,
+                title=title,
+                part_index=part_index,
+            ),
+            "title": part_title,
+            "content": _compose_chunk_content(title, body_text),
+            "source": source_name,
+            "source_type": source_type,
+            "heading_path": " > ".join(heading_path),
+            "parent_id": "" if part_index == 1 else base_id,
+            "level": section.level,
+            "part_index": part_index,
+        }
+
+    if len(body) <= max_chars:
+        return [build_chunk(1, body, title)]
+
+    paragraphs = body.split("\n\n")
+    body_chunks = merge_paragraphs_with_budget(
+        paragraphs,
+        max_chars=max(800, max_chars - len(title) - 16),
+        overlap_paragraphs=1,
+    )
+    if not body_chunks:
+        body_chunks = split_text_with_overlap(body, max_chars=max_chars, overlap_chars=overlap_chars)
+
+    return [
+        build_chunk(
+            part_index,
+            body_chunk,
+            title if part_index == 1 else f"{title} (Part {part_index})",
+        )
+        for part_index, body_chunk in enumerate(body_chunks, start=1)
+    ]
+
+
 def split_markdown_headings(
     filepath: str,
     source_name: str,
@@ -122,6 +196,7 @@ def split_markdown_headings(
     current_title = ""
     current_path: list[str] = []
     section_index = 0
+    in_fence = False
 
     def flush_current() -> None:
         nonlocal current_lines, current_title, current_path, section_index, chunks
@@ -144,7 +219,16 @@ def split_markdown_headings(
         current_lines = []
 
     for line in lines:
-        match = HEADING_RE.match(line)
+        stripped = line.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            if current_lines:
+                current_lines.append(line)
+            else:
+                preamble_lines.append(line)
+            continue
+
+        match = None if in_fence else HEADING_RE.match(line)
         if match:
             level = len(match.group(1))
             title = _normalize_title(match.group(2))
@@ -179,5 +263,38 @@ def split_markdown_headings(
             overlap_chars=overlap_chars,
         )
         chunks = preamble_chunks + chunks
+
+    return chunks
+
+
+def split_generic_document(
+    filepath: str,
+    source_name: str,
+    *,
+    include_root_chunk: bool = True,
+    max_chars: int = 5000,
+    overlap_chars: int = 400,
+) -> list[dict]:
+    parsed = parse_document(filepath, source_name)
+    chunks: list[dict] = []
+
+    for section_index, section in enumerate(parsed.sections, start=1):
+        is_root_like = (
+            section.level <= 1
+            and len(section.heading_path) <= 1
+            and _normalize_title(section.title).lower() == _normalize_title(parsed.title).lower()
+        )
+        if is_root_like and not include_root_chunk:
+            continue
+
+        chunks.extend(
+            _split_parsed_section_with_budget(
+                section=section,
+                source_name=source_name,
+                section_index=section_index,
+                max_chars=max_chars,
+                overlap_chars=overlap_chars,
+            )
+        )
 
     return chunks
