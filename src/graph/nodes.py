@@ -437,6 +437,10 @@ def retrieve_context(state: AgentState) -> dict:
             "title": item["title"],
             "collection": item["collection"],
             "source": item.get("source"),
+            "heading_path": item.get("heading_path"),
+            "parent_id": item.get("parent_id"),
+            "level": item.get("level"),
+            "part_index": item.get("part_index"),
             "score": item.get("score"),
             "rerank_score": item.get("rerank_score"),
         }

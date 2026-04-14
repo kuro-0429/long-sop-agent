@@ -21,6 +21,10 @@ class IndexSource:
     splitter: str
     source_name: str
     label: str
+    split_heading_level: int = 2
+    include_root_chunk: bool = True
+    max_chars: int = 5000
+    overlap_chars: int = 400
 
 
 @dataclass(frozen=True)
@@ -94,23 +98,29 @@ DOMAIN_PROFILES = {
             IndexSource(
                 collection="techniques",
                 path="configs/prompt_templates/generator_techniques.md",
-                splitter="techniques",
+                splitter="markdown_headings",
                 source_name="generator_techniques",
                 label="technique library",
+                split_heading_level=3,
+                include_root_chunk=False,
             ),
             IndexSource(
                 collection="flow",
                 path="configs/prompt_templates/generator_flow.md",
-                splitter="h2",
+                splitter="markdown_headings",
                 source_name="flow",
                 label="generation flow",
+                split_heading_level=2,
+                include_root_chunk=True,
             ),
             IndexSource(
                 collection="style",
                 path="configs/prompt_templates/generator_wildcards.md",
-                splitter="h2",
+                splitter="markdown_headings",
                 source_name="style",
                 label="style and wildcard library",
+                split_heading_level=2,
+                include_root_chunk=True,
             ),
         ),
         context_documents=(

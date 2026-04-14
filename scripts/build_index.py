@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, ".")
 
+from src.chunking.generic import split_markdown_headings
 from src.chunking.structured_tag import split_by_h2, split_techniques
 from src.config import CHROMA_DB_PATH
 from src.domain_profiles import get_domain_profile
@@ -22,6 +23,15 @@ def maybe_reset(store: ChromaStore, rebuild: bool) -> None:
 
 
 def load_chunks(source):
+    if source.splitter == "markdown_headings":
+        return split_markdown_headings(
+            source.path,
+            source.source_name,
+            split_heading_level=source.split_heading_level,
+            include_root_chunk=source.include_root_chunk,
+            max_chars=source.max_chars,
+            overlap_chars=source.overlap_chars,
+        )
     if source.splitter == "techniques":
         return split_techniques(source.path)
     if source.splitter == "h2":

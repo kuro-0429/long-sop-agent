@@ -13,11 +13,20 @@ class ChromaStore:
         print(f"[ChromaStore] collection='{collection_name}', count={self.collection.count()}")
 
     def add(self, chunks: List[Dict], embeddings: List[List[float]]) -> None:
+        metadatas = []
+        for chunk in chunks:
+            metadata = {"title": chunk["title"], "source": chunk["source"]}
+            for key in ("heading_path", "parent_id", "level", "part_index"):
+                value = chunk.get(key)
+                if value not in (None, "", []):
+                    metadata[key] = value
+            metadatas.append(metadata)
+
         self.collection.add(
             ids=[c["id"] for c in chunks],
             documents=[c["content"] for c in chunks],
             embeddings=embeddings,
-            metadatas=[{"title": c["title"], "source": c["source"]} for c in chunks],
+            metadatas=metadatas,
         )
         print(f"[ChromaStore] wrote {len(chunks)} rows, total={self.collection.count()}")
 
@@ -44,6 +53,10 @@ class ChromaStore:
                     "content": results["documents"][0][i],
                     "title": results["metadatas"][0][i]["title"],
                     "source": results["metadatas"][0][i].get("source"),
+                    "heading_path": results["metadatas"][0][i].get("heading_path"),
+                    "parent_id": results["metadatas"][0][i].get("parent_id"),
+                    "level": results["metadatas"][0][i].get("level"),
+                    "part_index": results["metadatas"][0][i].get("part_index"),
                     "score": 1 - results["distances"][0][i],
                 }
             )
