@@ -47,7 +47,9 @@ Rules:
 2. Separate hard requirements from optional creative guidance.
 3. Preserve domain-specific details while removing duplication.
 4. If previous validation issues are provided, convert them into explicit repair requirements.
-5. Output an implementation spec, not the final HTML.
+5. Be selective and query-aware; do not dump the whole corpus into the spec.
+6. Prefer a compact structured execution spec over a long narrative.
+7. Output an implementation spec, not the final HTML.
 """
 
 
@@ -70,7 +72,8 @@ Rules:
 1. Preserve precise requirements, thresholds, identifiers, and prohibited actions.
 2. Separate mandatory constraints from recommendations.
 3. Preserve repair instructions from previous validation failures.
-4. Output an execution spec for a downstream model, not the final deliverable.
+4. Be selective and query-aware; keep only what is needed for correct execution.
+5. Output an execution spec for a downstream model, not the final deliverable.
 """
 
 

@@ -8,6 +8,13 @@ from typing import Any
 import httpx
 from dotenv import load_dotenv
 
+from src.compression import (
+    EXECUTION_SPEC_SCHEMA_TEXT,
+    collect_source_refs,
+    parse_execution_spec,
+    render_execution_spec_brief,
+    render_execution_spec,
+)
 from src.config import (
     CHROMA_DB_PATH,
     GENERATION_MODEL,
@@ -321,7 +328,7 @@ def format_retrieved_block(items: list[dict], label: str) -> str:
     if not items:
         return f"## {label}\n(none)"
     body = "\n\n---\n\n".join(
-        f"[{item['collection']}] {item['title']}\n{item['content']}" for item in items
+        f"[{item['collection']}] {item['title']}\nsource_ref={item['id']}\n{item['content']}" for item in items
     )
     return f"## {label}\n{body}"
 
@@ -441,15 +448,15 @@ def retrieve_context(state: AgentState) -> dict:
         "# CONTEXT PACKAGE",
         f"## DOMAIN_PROFILE\n{profile.name}",
         f"## DOMAIN_DESCRIPTION\n{profile.description}",
-        f"## USER_BRIEF\n{state['user_query']}",
+        f"## USER_BRIEF\nsource_ref=user_brief\n{state['user_query']}",
         f"## RETRY_STATUS\nretry_count={state.get('retry_count', 0)}",
-        f"## PREVIOUS_ISSUES\n{format_issue_block(state)}",
+        f"## PREVIOUS_ISSUES\nsource_ref=previous_issues\n{format_issue_block(state)}",
     ]
 
     for doc in profile.context_documents:
         should_include = doc.always_include or not grouped_hits.get(doc.fallback_for or "")
         if should_include:
-            context_parts.append(f"## {doc.section_title}\n{docs[doc.key]}")
+            context_parts.append(f"## {doc.section_title}\nsource_ref={doc.key}\n{docs[doc.key]}")
 
     for collection in profile.collections:
         context_parts.append(format_retrieved_block(grouped_hits.get(collection, []), f"RETRIEVED_{collection.upper()}"))
@@ -484,26 +491,48 @@ def retrieve_context(state: AgentState) -> dict:
 def build_prompt(state: AgentState) -> dict:
     profile = resolve_profile(state)
     outline = "\n".join(f"- {item}" for item in profile.builder_outline)
+    allowed_source_refs = [
+        "user_brief",
+        "previous_issues",
+        *[doc.key for doc in profile.context_documents],
+        *[item["id"] for item in state.get("retrieved_chunk_details") or []],
+    ]
     prompt = f"""Compress the following context into a high-fidelity execution spec for the downstream model.
 
 Requirements:
 1. Keep precise values, thresholds, identifiers, accessibility requirements, forbidden items, and named codes.
 2. Distinguish mandatory constraints from optional guidance.
 3. Convert previous validation failures into explicit repair requirements.
-4. Follow this outline:
+4. Be query-aware: prefer the smallest set of constraints that preserves correctness for this task.
+5. Do not restate near-duplicate requirements across multiple sections.
+6. Prefer acceptance checks for testable outcomes instead of turning every detail into a hard constraint.
+7. Follow this outline:
 {outline}
+8. Use only these source refs when citing evidence:
+{", ".join(allowed_source_refs) if allowed_source_refs else "(none)"}
+
+{EXECUTION_SPEC_SCHEMA_TEXT}
 
 Context:
 {state['context']}
 """
 
-    built_prompt, in_tok, out_tok = call_openai(
+    raw_output, in_tok, out_tok = call_openai(
         prompt,
         system=profile.prompt_build_system,
         model=PROMPT_BUILD_MODEL,
         max_tokens=16000,
         reasoning_effort=PROMPT_BUILD_REASONING_EFFORT,
     )
+    execution_spec, parse_meta = parse_execution_spec(
+        raw_output,
+        output_format=profile.output_format,
+        task_summary=state["user_query"],
+        allowed_source_refs=allowed_source_refs,
+    )
+    built_prompt = render_execution_spec_brief(execution_spec)
+    execution_spec_json = render_execution_spec(execution_spec)
+    used_source_refs = collect_source_refs(execution_spec)
     log_entry = make_call_log(
         stage="build_prompt",
         model=PROMPT_BUILD_MODEL,
@@ -518,24 +547,34 @@ Context:
     print(f"[build_prompt] profile={profile.name}, input={in_tok}, output={out_tok}, chars={len(built_prompt)}")
     return {
         "built_prompt": built_prompt,
+        "execution_spec": execution_spec,
         "call_logs": append_call_log(state, log_entry),
         "compression_metadata": {
+            "mode": "structured_execution_spec",
             "model": PROMPT_BUILD_MODEL,
             "reasoning_effort": PROMPT_BUILD_REASONING_EFFORT,
             "input_tokens": in_tok,
             "output_tokens": out_tok,
             "input_chars": len(state["context"]),
             "output_chars": len(built_prompt),
+            "json_output_chars": len(execution_spec_json),
             "retention_ratio": round(out_tok / in_tok, 4) if in_tok else None,
+            "used_source_ref_count": len(used_source_refs),
+            "allowed_source_ref_count": len(set(allowed_source_refs)),
+            "hard_constraint_count": len(execution_spec.get("hard_constraints") or []),
+            "interaction_requirement_count": len(execution_spec.get("interaction_requirements") or []),
+            "acceptance_check_count": len(execution_spec.get("acceptance_checks") or []),
         },
+        "spec_parse_metadata": parse_meta,
     }
 
 
 def generate(state: AgentState) -> dict:
     profile = resolve_profile(state)
+    execution_spec_text = state.get("built_prompt") or render_execution_spec(state.get("execution_spec") or {})
     prompt = f"""Here is the execution spec:
 
-{state['built_prompt']}
+{execution_spec_text}
 
 ---
 
@@ -580,6 +619,7 @@ Generate the final deliverable now."""
             "input_chars": len(prompt),
             "output_chars": len(cleaned),
             "output_format": profile.output_format,
+            "spec_mode": "structured_execution_spec",
         },
     }
 

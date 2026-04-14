@@ -14,6 +14,7 @@ from src.config import (
     OPENAI_BASE_URL,
     PROMPT_BUILD_MODEL,
 )
+from src.compression import execution_spec_search_text, render_execution_spec
 from src.domain_profiles import get_domain_profile
 from src.evaluation.metrics import (
     constraint_coverage,
@@ -79,6 +80,7 @@ def build_initial_state(query: str, profile: str) -> dict[str, Any]:
         "context": None,
         "expanded_queries": None,
         "built_prompt": None,
+        "execution_spec": None,
         "generation_result": None,
         "quality_check": None,
         "retry_count": 0,
@@ -86,6 +88,7 @@ def build_initial_state(query: str, profile: str) -> dict[str, Any]:
         "intent_metadata": None,
         "retrieval_metadata": None,
         "compression_metadata": None,
+        "spec_parse_metadata": None,
         "generation_metadata": None,
     }
 
@@ -162,7 +165,9 @@ def persist_run(
 
     compression_payload = {
         "compression_metadata": result.get("compression_metadata"),
-        "execution_spec": result.get("built_prompt") or "",
+        "spec_parse_metadata": result.get("spec_parse_metadata"),
+        "execution_spec": result.get("execution_spec") or {},
+        "execution_spec_text": result.get("built_prompt") or "",
         "source_refs": [item["id"] for item in retrieved_details],
         "constraint_coverage": None,
     }
@@ -204,7 +209,11 @@ def persist_run(
     write_json(output_dir / "call_logs.json", {"call_logs": call_logs})
 
     (output_dir / "context.txt").write_text(result.get("context") or "", encoding="utf-8")
-    (output_dir / "execution_spec.txt").write_text(result.get("built_prompt") or "", encoding="utf-8")
+    (output_dir / "execution_spec.txt").write_text(
+        result.get("built_prompt") or render_execution_spec(result.get("execution_spec") or {}),
+        encoding="utf-8",
+    )
+    write_json(output_dir / "execution_spec.json", result.get("execution_spec") or {})
     artifact_ext = "html" if profile.output_format == "html" else "txt"
     (output_dir / f"artifact.{artifact_ext}").write_text(
         result.get("generation_result") or "",
@@ -223,12 +232,13 @@ def evaluate_result_against_benchmark(
     oracle_chunk_ids = list(benchmark_item.get("oracle_chunk_ids") or [])
     oracle_constraints = list(benchmark_item.get("oracle_constraints") or [])
     built_prompt = result.get("built_prompt") or ""
+    execution_spec_text = execution_spec_search_text(result.get("execution_spec") or {})
 
     return {
         "task_id": benchmark_item.get("task_id"),
         "retrieval_recall": recall_at_k(retrieved_ids, oracle_chunk_ids),
         "retrieval_precision": precision_at_k(retrieved_ids, oracle_chunk_ids),
-        "hard_constraint_coverage": constraint_coverage(built_prompt, oracle_constraints),
+        "hard_constraint_coverage": constraint_coverage(execution_spec_text or built_prompt, oracle_constraints),
         "validator_pass": (result.get("quality_check") or {}).get("pass"),
         "retry_count": result.get("retry_count", 0),
     }

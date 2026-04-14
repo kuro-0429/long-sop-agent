@@ -13,6 +13,7 @@ class AgentState(TypedDict, total=False):
     expanded_queries: Optional[list[str]]
 
     built_prompt: Optional[str]
+    execution_spec: Optional[dict[str, Any]]
     generation_result: Optional[str]
 
     quality_check: Optional[dict[str, Any]]
@@ -22,4 +23,5 @@ class AgentState(TypedDict, total=False):
     intent_metadata: Optional[dict[str, Any]]
     retrieval_metadata: Optional[dict[str, Any]]
     compression_metadata: Optional[dict[str, Any]]
+    spec_parse_metadata: Optional[dict[str, Any]]
     generation_metadata: Optional[dict[str, Any]]
