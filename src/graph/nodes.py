@@ -28,6 +28,18 @@ from src.config import (
     OPENAI_TIMEOUT_SECONDS,
     PROMPT_BUILD_MODEL,
     PROMPT_BUILD_REASONING_EFFORT,
+    RETRIEVAL_DENSE_TOP_K,
+    RETRIEVAL_ENABLE_DENSE,
+    RETRIEVAL_ENABLE_LEXICAL,
+    RETRIEVAL_ENABLE_PARENT_EXPANSION,
+    RETRIEVAL_FINAL_TOP_K,
+    RETRIEVAL_HYBRID_DENSE_WEIGHT,
+    RETRIEVAL_HYBRID_LEXICAL_WEIGHT,
+    RETRIEVAL_LEXICAL_TOP_K,
+    RETRIEVAL_PARENT_EXPAND_MAX_EXTRA,
+    RETRIEVAL_PARENT_EXPAND_MAX_FAMILIES,
+    RETRIEVAL_PRE_RERANK_K,
+    RETRIEVAL_RERANK_TOP_K,
 )
 from src.domain_profiles import DomainProfile, get_domain_profile
 from src.evaluation.validators import get_validator
@@ -117,31 +129,39 @@ def call_chat_completions_stream(
         "Content-Type": "application/json",
     }
 
-    with httpx.Client(timeout=OPENAI_TIMEOUT_SECONDS) as client:
-        with client.stream("POST", endpoint, headers=headers, json=body) as response:
-            response.raise_for_status()
-            chunks: list[str] = []
-            input_tokens = 0
-            output_tokens = 0
+    for attempt in range(2):
+        try:
+            with httpx.Client(timeout=OPENAI_TIMEOUT_SECONDS) as client:
+                with client.stream("POST", endpoint, headers=headers, json=body) as response:
+                    response.raise_for_status()
+                    chunks: list[str] = []
+                    input_tokens = 0
+                    output_tokens = 0
 
-            for line in response.iter_lines():
-                if not line or not line.startswith("data: "):
-                    continue
-                data = line[6:].strip()
-                if data == "[DONE]":
-                    break
-                payload = httpx.Response(200, content=data).json()
-                choices = payload.get("choices", [])
-                if choices:
-                    delta = choices[0].get("delta", {})
-                    content = delta.get("content")
-                    if isinstance(content, str):
-                        chunks.append(content)
-                usage = payload.get("usage", {})
-                input_tokens = usage.get("prompt_tokens", input_tokens)
-                output_tokens = usage.get("completion_tokens", output_tokens)
+                    for line in response.iter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data = line[6:].strip()
+                        if data == "[DONE]":
+                            break
+                        payload = httpx.Response(200, content=data).json()
+                        choices = payload.get("choices", [])
+                        if choices:
+                            delta = choices[0].get("delta", {})
+                            content = delta.get("content")
+                            if isinstance(content, str):
+                                chunks.append(content)
+                        usage = payload.get("usage", {})
+                        input_tokens = usage.get("prompt_tokens", input_tokens)
+                        output_tokens = usage.get("completion_tokens", output_tokens)
 
-            return "".join(chunks).strip(), input_tokens, output_tokens
+                    return "".join(chunks).strip(), input_tokens, output_tokens
+        except httpx.RemoteProtocolError as exc:
+            if attempt == 0:
+                print(f"[call_chat_completions_stream] stream dropped early: {exc}; retrying once in 3s")
+                time.sleep(3)
+                continue
+            raise
 
 
 def call_openai(
@@ -406,28 +426,202 @@ Return exactly 4 lines with no numbering and no explanation."""
     return queries[:5], log_entry
 
 
+def _candidate_key(collection: str, chunk_id: str) -> str:
+    return f"{collection}:{chunk_id}"
+
+
+def _merge_candidate(
+    candidate_map: dict[str, dict[str, Any]],
+    *,
+    collection: str,
+    item: dict[str, Any],
+    query: str,
+    dense_score: float | None = None,
+    dense_norm: float | None = None,
+    lexical_score: float | None = None,
+    lexical_norm: float | None = None,
+) -> None:
+    key = _candidate_key(collection, item["id"])
+    existing = candidate_map.get(key)
+    if existing is None:
+        existing = dict(item)
+        existing["collection"] = collection
+        existing["dense_score"] = 0.0
+        existing["dense_norm"] = 0.0
+        existing["lexical_score"] = 0.0
+        existing["lexical_norm"] = 0.0
+        existing["matched_queries"] = []
+        candidate_map[key] = existing
+
+    if query not in existing["matched_queries"]:
+        existing["matched_queries"].append(query)
+
+    if dense_score is not None:
+        existing["dense_score"] = max(existing.get("dense_score") or 0.0, dense_score)
+        existing["dense_norm"] = max(existing.get("dense_norm") or 0.0, dense_norm or dense_score)
+
+    if lexical_score is not None:
+        existing["lexical_score"] = max(existing.get("lexical_score") or 0.0, lexical_score)
+        existing["lexical_norm"] = max(existing.get("lexical_norm") or 0.0, lexical_norm or lexical_score)
+
+
+def _compute_hybrid_score(item: dict[str, Any]) -> float:
+    dense_norm = float(item.get("dense_norm") or 0.0)
+    lexical_norm = float(item.get("lexical_norm") or 0.0)
+
+    if RETRIEVAL_ENABLE_DENSE and RETRIEVAL_ENABLE_LEXICAL:
+        score = (RETRIEVAL_HYBRID_DENSE_WEIGHT * dense_norm) + (
+            RETRIEVAL_HYBRID_LEXICAL_WEIGHT * lexical_norm
+        )
+    elif RETRIEVAL_ENABLE_DENSE:
+        score = dense_norm
+    elif RETRIEVAL_ENABLE_LEXICAL:
+        score = lexical_norm
+    else:
+        score = 0.0
+
+    query_bonus = min(len(item.get("matched_queries") or []), 3) * 0.03
+    return round(score + query_bonus, 6)
+
+
+def _rank_hybrid_candidates(
+    *,
+    expanded_queries: list[str],
+    embedder: Embedder,
+    stores: dict[str, ChromaStore],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    candidate_map: dict[str, dict[str, Any]] = {}
+    dense_candidate_count = 0
+    lexical_candidate_count = 0
+
+    for query in expanded_queries:
+        query_vec = embedder.embed([query])[0] if RETRIEVAL_ENABLE_DENSE else None
+        for collection, store in stores.items():
+            dense_results = (
+                store.query(query_vec, top_k=RETRIEVAL_DENSE_TOP_K)
+                if RETRIEVAL_ENABLE_DENSE and query_vec is not None
+                else []
+            )
+            lexical_results = (
+                store.query_lexical(query, top_k=RETRIEVAL_LEXICAL_TOP_K)
+                if RETRIEVAL_ENABLE_LEXICAL
+                else []
+            )
+
+            dense_scale = max((item.get("score") or 0.0) for item in dense_results) or 1.0
+            lexical_scale = max((item.get("lexical_score") or 0.0) for item in lexical_results) or 1.0
+
+            for item in dense_results:
+                dense_candidate_count += 1
+                _merge_candidate(
+                    candidate_map,
+                    collection=collection,
+                    item=item,
+                    query=query,
+                    dense_score=item.get("score"),
+                    dense_norm=(item.get("score") or 0.0) / dense_scale,
+                )
+
+            for item in lexical_results:
+                lexical_candidate_count += 1
+                _merge_candidate(
+                    candidate_map,
+                    collection=collection,
+                    item=item,
+                    query=query,
+                    lexical_score=item.get("lexical_score"),
+                    lexical_norm=(item.get("lexical_score") or 0.0) / lexical_scale,
+                )
+
+    candidates = list(candidate_map.values())
+    for item in candidates:
+        item["hybrid_score"] = _compute_hybrid_score(item)
+
+    candidates.sort(key=lambda row: row["hybrid_score"], reverse=True)
+    return candidates[: RETRIEVAL_PRE_RERANK_K], {
+        "dense_candidate_count": dense_candidate_count,
+        "lexical_candidate_count": lexical_candidate_count,
+        "candidate_count": len(candidates),
+        "pre_rerank_count": min(len(candidates), RETRIEVAL_PRE_RERANK_K),
+    }
+
+
+def _expand_parent_families(
+    reranked: list[dict[str, Any]],
+    stores: dict[str, ChromaStore],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if not RETRIEVAL_ENABLE_PARENT_EXPANSION:
+        return reranked[:RETRIEVAL_FINAL_TOP_K], {
+            "parent_expansion_enabled": False,
+            "parent_expanded_family_count": 0,
+            "parent_expanded_extra_chunks": 0,
+        }
+
+    final_results: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    expanded_families: set[tuple[str, str]] = set()
+    extra_chunks = 0
+
+    for anchor in reranked[:RETRIEVAL_RERANK_TOP_K]:
+        anchor_key = _candidate_key(anchor["collection"], anchor["id"])
+        if anchor_key not in seen_keys:
+            final_results.append(anchor)
+            seen_keys.add(anchor_key)
+            if len(final_results) >= RETRIEVAL_FINAL_TOP_K + RETRIEVAL_PARENT_EXPAND_MAX_EXTRA:
+                break
+
+        family_id = anchor.get("parent_id") or anchor["id"]
+        family_key = (anchor["collection"], family_id)
+        if family_key in expanded_families or len(expanded_families) >= RETRIEVAL_PARENT_EXPAND_MAX_FAMILIES:
+            continue
+
+        family_rows = stores[anchor["collection"]].expand_family(family_id)
+        if len(family_rows) <= 1:
+            continue
+
+        expanded_families.add(family_key)
+        for family_item in family_rows:
+            item = dict(family_item)
+            item["collection"] = anchor["collection"]
+            item["expanded_from_parent"] = True
+            item_key = _candidate_key(item["collection"], item["id"])
+            if item_key in seen_keys:
+                continue
+            final_results.append(item)
+            seen_keys.add(item_key)
+            extra_chunks += 1
+            if len(final_results) >= RETRIEVAL_FINAL_TOP_K + RETRIEVAL_PARENT_EXPAND_MAX_EXTRA:
+                break
+
+        if len(final_results) >= RETRIEVAL_FINAL_TOP_K + RETRIEVAL_PARENT_EXPAND_MAX_EXTRA:
+            break
+
+    return final_results[: RETRIEVAL_FINAL_TOP_K + RETRIEVAL_PARENT_EXPAND_MAX_EXTRA], {
+        "parent_expansion_enabled": True,
+        "parent_expanded_family_count": len(expanded_families),
+        "parent_expanded_extra_chunks": extra_chunks,
+    }
+
+
 def retrieve_context(state: AgentState) -> dict:
     profile = resolve_profile(state)
     embedder, stores, reranker = get_retriever(profile)
     retrieval_start = time.perf_counter()
     expanded, expansion_log = expand_query(state["user_query"], state["intent"], profile)
 
-    candidates = []
-    seen_ids = set()
-    for query in expanded:
-        query_vec = embedder.embed([query])[0]
-        for name, store in stores.items():
-            for result in store.query(query_vec, top_k=4):
-                cache_key = f"{name}:{result['id']}"
-                if cache_key in seen_ids:
-                    continue
-                result["collection"] = name
-                candidates.append(result)
-                seen_ids.add(cache_key)
-
-    reranked = reranker.rerank(state["user_query"], candidates, top_k=min(10, len(candidates))) if candidates else []
+    candidates, candidate_meta = _rank_hybrid_candidates(
+        expanded_queries=expanded,
+        embedder=embedder,
+        stores=stores,
+    )
+    reranked = (
+        reranker.rerank(state["user_query"], candidates, top_k=min(RETRIEVAL_RERANK_TOP_K, len(candidates)))
+        if candidates
+        else []
+    )
+    final_hits, parent_meta = _expand_parent_families(reranked, stores)
     grouped_hits: dict[str, list[dict]] = defaultdict(list)
-    for item in reranked:
+    for item in final_hits:
         grouped_hits[item["collection"]].append(item)
 
     retrieved_details = [
@@ -443,9 +637,13 @@ def retrieve_context(state: AgentState) -> dict:
             "level": item.get("level"),
             "part_index": item.get("part_index"),
             "score": item.get("score"),
+            "dense_score": item.get("dense_score"),
+            "lexical_score": item.get("lexical_score"),
+            "hybrid_score": item.get("hybrid_score"),
             "rerank_score": item.get("rerank_score"),
+            "expanded_from_parent": bool(item.get("expanded_from_parent")),
         }
-        for idx, item in enumerate(reranked, start=1)
+        for idx, item in enumerate(final_hits, start=1)
     ]
 
     docs = load_context_documents(profile)
@@ -471,13 +669,15 @@ def retrieve_context(state: AgentState) -> dict:
 
     print(
         "[retrieve_context] "
-        f"profile={profile.name}, candidates={len(candidates)}, reranked={len(reranked)}"
+        f"profile={profile.name}, candidates={candidate_meta['candidate_count']}, "
+        f"reranked={len(reranked)}, final={len(final_hits)}"
     )
-    for item in reranked:
-        safe_print(f"  [{item['rerank_score']:.3f}] [{item['collection']}] {item['title']}")
+    for item in final_hits:
+        rank_signal = item.get("rerank_score", item.get("hybrid_score", 0.0))
+        safe_print(f"  [{rank_signal:.3f}] [{item['collection']}] {item['title']}")
 
     return {
-        "retrieved_chunks": [f"[{item['collection']}] {item['title']}" for item in reranked],
+        "retrieved_chunks": [f"[{item['collection']}] {item['title']}" for item in final_hits],
         "retrieved_chunk_details": retrieved_details,
         "context": context,
         "expanded_queries": expanded,
@@ -485,10 +685,22 @@ def retrieve_context(state: AgentState) -> dict:
         "retrieval_metadata": {
             "profile": profile.name,
             "expanded_queries": expanded,
-            "candidate_count": len(candidates),
-            "retrieved_count": len(reranked),
+            "candidate_count": candidate_meta["candidate_count"],
+            "dense_candidate_count": candidate_meta["dense_candidate_count"],
+            "lexical_candidate_count": candidate_meta["lexical_candidate_count"],
+            "pre_rerank_count": candidate_meta["pre_rerank_count"],
+            "reranked_count": len(reranked),
+            "retrieved_count": len(final_hits),
             "retrieval_latency_ms": retrieval_latency_ms,
-            "collections_hit": sorted({item["collection"] for item in reranked}),
+            "collections_hit": sorted({item["collection"] for item in final_hits}),
+            "dense_enabled": RETRIEVAL_ENABLE_DENSE,
+            "lexical_enabled": RETRIEVAL_ENABLE_LEXICAL,
+            "parent_expansion_enabled": RETRIEVAL_ENABLE_PARENT_EXPANSION,
+            "dense_top_k": RETRIEVAL_DENSE_TOP_K,
+            "lexical_top_k": RETRIEVAL_LEXICAL_TOP_K,
+            "rerank_top_k": RETRIEVAL_RERANK_TOP_K,
+            "final_top_k": RETRIEVAL_FINAL_TOP_K,
+            **parent_meta,
         },
     }
 
